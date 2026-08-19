@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="app-version" content="1.1.0">
 <title>アフリカン・シンフォニー 流れる絵譜</title>
 <style>
 :root{
@@ -137,6 +138,14 @@ body.single .lane:not(.hidden) .note.long{width:210px;height:86px;font-size:18px
 body.single .lane:not(.hidden){grid-template-columns:120px 1fr}
 body.single .lane:not(.hidden) .target{left:90px}
 }
+
+.appVersion{
+  position:fixed;right:10px;bottom:7px;z-index:20;
+  font-size:11px;line-height:1;color:#756d66;opacity:.45;
+  letter-spacing:.02em;user-select:none;pointer-events:none;
+}
+body.performanceMode .appVersion{display:none}
+
 </style>
 </head>
 <body>
@@ -174,6 +183,9 @@ body.single .lane:not(.hidden) .target{left:90px}
 <option value=".75">0.75倍</option>
 <option value=".9">0.9倍</option>
 <option value="1" selected>1.0倍</option>
+<option value="1.1">1.1倍</option>
+<option value="1.25">1.25倍</option>
+<option value="1.5">1.5倍</option>
 </select></div>
 <div class="time"><span id="nowText">0:00</span> / 2:23</div>
 </div>
@@ -239,6 +251,7 @@ body.single .lane:not(.hidden) .target{left:90px}
 <script>
 (function(){
 'use strict';
+const APP_VERSION='1.1.0';
 
 const audio=document.getElementById('audio');
 const playBtn=document.getElementById('playBtn');
@@ -660,5 +673,6 @@ try{applyState(JSON.parse(embedded.textContent));}catch(e){console.error(e);}
 render();
 })();
 </script>
+<div class="appVersion" aria-label="アプリバージョン 1.1.0">v1.1.0</div>
 </body>
 </html>
