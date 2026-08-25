@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#fff8ef" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>デジタル絵譜</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <header class="topbar">
+      <button id="homeBtn" class="icon-btn" aria-label="最初の画面へ">⌂</button>
+      <div class="brand-small">デジタル絵譜</div>
+      <div class="top-actions">
+        <button id="backupBtn" class="soft-btn">書き出し</button>
+        <label class="soft-btn backup-import-label">読み込み<input id="restoreFileInput" type="file" accept="application/json,.json" hidden /></label>
+        <button id="fullscreenBtn" class="icon-btn" aria-label="全画面表示">⛶</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="screen-start" class="screen active start-screen" aria-labelledby="startTitle">
+        <div class="start-card">
+          <div class="music-mark">♪ ♫ ♪</div>
+          <h1 id="startTitle">デジタル絵譜</h1>
+          <p class="subtitle">〜リズムに合わせて演奏しよう〜</p>
+          <button id="startBtn" class="primary big">スタート！</button>
+        </div>
+      </section>
+
+      <section id="screen-song" class="screen" aria-labelledby="songTitle">
+        <div class="page-head">
+          <div><span class="step">1</span><h2 id="songTitle">曲を選ぼう</h2></div>
+          <p>端末のMP3・M4A・WAV・MP4などを追加できます。</p>
+        </div>
+        <div class="toolbar wrap">
+          <label class="primary file-label">＋ 曲を追加<input id="songFileInput" type="file" accept="audio/*,video/*" hidden /></label>
+          <button id="tapTempoSongBtn" class="soft-btn">テンポを4回タップ</button>
+          <span id="tempoStatus" class="status-pill">テンポ: 未設定</span>
+        </div>
+        <div id="songGrid" class="card-grid"></div>
+        <div class="bottom-actions"><button id="songGoBtn" class="primary big" disabled>Go！</button></div>
+      </section>
+
+      <section id="screen-instrument" class="screen" aria-labelledby="instrumentTitle">
+        <div class="page-head">
+          <div><span class="step">2</span><h2 id="instrumentTitle">楽器を選ぼう</h2></div>
+          <p>いくつでも選べます。追加した楽器も保存されます。</p>
+        </div>
+        <div class="toolbar wrap">
+          <button id="addInstrumentBtn" class="primary">＋ ほかの楽器</button>
+          <button id="clearInstrumentBtn" class="soft-btn">選択をクリア</button>
+        </div>
+        <div class="category-tabs" id="categoryTabs"></div>
+        <div id="instrumentGrid" class="instrument-grid"></div>
+        <div class="bottom-actions"><button id="instrumentGoBtn" class="primary big" disabled>Go！</button></div>
+      </section>
+
+      <section id="screen-rhythm" class="screen" aria-labelledby="rhythmTitle">
+        <div class="page-head">
+          <div><span class="step">3</span><h2 id="rhythmTitle">リズム絵譜を作ろう</h2></div>
+          <p id="rhythmProgress">楽器ごとにリズムを決めます。</p>
+        </div>
+        <div id="rhythmInstrumentHeader" class="selected-instrument-head"></div>
+        <div class="rhythm-layout">
+          <div>
+            <h3>よく使うリズム</h3>
+            <div id="presetGrid" class="preset-grid"></div>
+            <h3>音を追加</h3>
+            <div id="tokenPalette" class="token-palette"></div>
+            <div class="custom-token-row">
+              <input id="customTokenInput" type="text" maxlength="12" placeholder="例：ドスン、チリン" />
+              <select id="customBeatsSelect" aria-label="音の長さ">
+                <option value="0.5">0.5拍</option><option value="1" selected>1拍</option><option value="2">2拍</option><option value="4">4拍</option>
+              </select>
+              <button id="addCustomTokenBtn" class="soft-btn">追加</button>
+            </div>
+          </div>
+          <div>
+            <h3>この楽器の絵譜</h3>
+            <div id="rhythmSequence" class="sequence" aria-live="polite"></div>
+            <div class="toolbar wrap">
+              <button id="undoTokenBtn" class="soft-btn">1つ戻す</button>
+              <button id="clearSequenceBtn" class="soft-btn">全部消す</button>
+              <button id="saveAsPatternBtn" class="soft-btn">マイリズムに保存</button>
+            </div>
+            <div class="pitch-box">
+              <label class="toggle-row"><input id="pitchModeToggle" type="checkbox" /> 音程も表示する（3段階以上向け）</label>
+              <div id="pitchControls" hidden>
+                <input id="pitchInput" type="text" placeholder="例：ド / C4 / ミ・ソ" />
+                <button id="applyPitchBtn" class="soft-btn">選んだ音に音程を付ける</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bottom-actions split">
+          <button id="rhythmBackBtn" class="soft-btn big">← 前の楽器</button>
+          <button id="rhythmNextBtn" class="primary big">次へ →</button>
+        </div>
+      </section>
+
+      <section id="screen-performance" class="screen performance-screen" aria-labelledby="performanceTitle">
+        <div class="performance-head">
+          <div>
+            <h2 id="performanceTitle">合奏しよう！</h2>
+            <div id="performanceMeta" class="performance-meta"></div>
+          </div>
+          <div class="performance-controls">
+            <button id="playBtn" class="primary">▶ 再生</button>
+            <button id="pauseBtn" class="soft-btn">Ⅱ 一時停止</button>
+            <button id="stopBtn" class="soft-btn">■ はじめから</button>
+            <button id="tapTempoPerfBtn" class="soft-btn">4回タップ補正</button>
+          </div>
+        </div>
+        <audio id="audioPlayer" preload="metadata"></audio>
+        <video id="videoPlayer" preload="metadata" playsinline hidden></video>
+        <div id="scoreViewport" class="score-viewport">
+          <div id="nowLine" class="now-line"><span>ここ！</span></div>
+          <div id="scoreRows" class="score-rows"></div>
+        </div>
+        <div class="performance-footer">
+          <span id="timeLabel">0:00 / 0:00</span>
+          <input id="seekBar" type="range" min="0" max="1000" value="0" aria-label="曲の位置" />
+          <button id="allPartsBtn" class="soft-btn" hidden>みんなの絵譜に戻る</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="instrumentModal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="addInstrumentTitle">
+      <h2 id="addInstrumentTitle">楽器を追加</h2>
+      <label>楽器名<input id="newInstrumentName" type="text" placeholder="例：ジャンベ" /></label>
+      <label>分類<select id="newInstrumentCategory"><option>打楽器</option><option>鍵盤</option><option>弦楽器</option><option>管楽器</option><option>その他</option></select></label>
+      <label>画像（任意）<input id="newInstrumentImage" type="file" accept="image/*" /></label>
+      <div class="modal-actions"><button id="cancelInstrumentBtn" class="soft-btn">キャンセル</button><button id="saveInstrumentBtn" class="primary">保存</button></div>
+    </div>
+  </div>
+
+  <div id="patternModal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="patternTitle">
+      <h2 id="patternTitle">マイリズムに保存</h2>
+      <label>名前<input id="patternNameInput" type="text" placeholder="例：太鼓Aメロ" /></label>
+      <div class="modal-actions"><button id="cancelPatternBtn" class="soft-btn">キャンセル</button><button id="confirmPatternBtn" class="primary">保存</button></div>
+    </div>
+  </div>
+
+  <div id="songNameModal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="songNameTitle">
+      <h2 id="songNameTitle">曲を保存</h2>
+      <label>曲名<input id="songNameInput" type="text" /></label>
+      <p class="hint">自動でテンポを調べます。合わない場合は後で「4回タップ」で直せます。</p>
+      <div class="modal-actions"><button id="cancelSongBtn" class="soft-btn">キャンセル</button><button id="confirmSongBtn" class="primary">保存して解析</button></div>
+    </div>
+  </div>
+
+  <div id="celebration" class="celebration" hidden aria-live="assertive">
+    <div class="confetti" aria-hidden="true"></div>
+    <div id="praiseText" class="praise-text">バッチリ！</div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

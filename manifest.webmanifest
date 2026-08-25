@@ -1,0 +1,10 @@
+{
+  "name":"デジタル絵譜〜リズムに合わせて演奏しよう〜",
+  "short_name":"デジタル絵譜",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#fff8ef",
+  "theme_color":"#fff8ef",
+  "lang":"ja",
+  "description":"特別支援学校の合奏練習で使う、太鼓の達人風のデジタル絵譜アプリ"
+}
