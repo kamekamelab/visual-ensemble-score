@@ -4,6 +4,7 @@
 (() => {
   let taps = [];
   let tapPlayerState = -1;
+  let ytPanelWasMoved = false;
   const MIN_BPM = 30;
   const MAX_BPM = 300;
 
@@ -39,6 +40,7 @@
       .sync-note{font-size:.9rem;color:var(--muted);line-height:1.5;margin:0}
       #simpleTapStatus{font-variant-numeric:tabular-nums}
       #editRhythmPerfBtn{min-height:48px;border-radius:14px;border:2px solid #777;background:#2d2d2d;color:#fff;padding:0 14px;font-weight:900}
+      .part-start-row{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px 0;padding:10px;border-radius:15px;background:#f7fbff;border:2px solid #d9e8f7}.part-start-row b{min-width:76px;text-align:center}.part-start-row button{min-height:46px;border:2px solid var(--line);border-radius:12px;background:#fff;padding:0 14px;font-weight:900}
       @media(max-width:540px){.sync-buttons{grid-template-columns:repeat(2,1fr)}}
     `;
     document.head.appendChild(s);
@@ -75,13 +77,24 @@
   const baseApplyTrackPosition = applyTrackPosition;
   applyTrackPosition = function(time) {
     const song = selectedSong();
-    if (!song || !Number(song.scoreShiftBeats || 0)) return baseApplyTrackPosition(time);
+    if (!song) return baseApplyTrackPosition(time);
     const originalOffset = Number(song.beatOffset || 0);
     const bpm = Number(song.bpm || 120) || 120;
     const shiftSec = Number(song.scoreShiftBeats || 0) * 60 / bpm;
-    song.beatOffset = originalOffset + shiftSec;
-    try { return baseApplyTrackPosition(time); }
-    finally { song.beatOffset = originalOffset; }
+    if (shiftSec) song.beatOffset = originalOffset + shiftSec;
+    try {
+      const result = baseApplyTrackPosition(time);
+      document.querySelectorAll('.score-row').forEach(row => {
+        const start = Number(state.partStartBeats?.[row.dataset.instrument] || 0);
+        if (!start) return;
+        const track = row.querySelector('.track');
+        const m = track?.style.transform?.match(/translate3d\(([-0-9.]+)px/);
+        if (!track || !m) return;
+        const x = Number(m[1]) + start * PX_PER_BEAT;
+        track.style.transform = `translate3d(${x}px,0,0)`;
+      });
+      return result;
+    } finally { song.beatOffset = originalOffset; }
   };
 
   function createControls() {
@@ -199,11 +212,31 @@
     taps = [];
   }
 
+  function moveYouTubePanelForTap() {
+    if (!isYT()) return;
+    const panel = document.getElementById('youtubePlayerPanel');
+    const box = document.getElementById('simpleTapBtn')?.closest('.simple-teacher-box');
+    if (!panel || !box) return;
+    box.insertBefore(panel, document.getElementById('simpleTapPlayBtn') || box.lastChild);
+    panel.hidden = false;
+    ytPanelWasMoved = true;
+  }
+
+  function restoreYouTubePanel() {
+    if (!ytPanelWasMoved) return;
+    const panel = document.getElementById('youtubePlayerPanel');
+    const perf = document.getElementById('screen-performance');
+    const score = document.getElementById('scoreViewport');
+    if (panel && perf && score) perf.insertBefore(panel, score);
+    ytPanelWasMoved = false;
+  }
+
   async function startTapPlayback() {
     const song = selectedSong();
     if (!song) return toast('先に曲を選んでください');
     taps = [];
     try {
+      if (isYT(song)) moveYouTubePanelForTap();
       await prepareMedia();
       await play();
       const status = document.getElementById('simpleTapStatus');
@@ -250,14 +283,74 @@
     if (d?.event === 'infoDelivery' && Number.isFinite(d?.info?.playerState)) tapPlayerState = Number(d.info.playerState);
   });
 
+  async function adjustPartStart(delta) {
+    const id = state.selectedInstrumentIds?.[state.rhythmIndex];
+    if (!id) return;
+    state.partStartBeats ||= {};
+    const next = Math.max(0, Math.min(128, Number(state.partStartBeats[id] || 0) + delta));
+    state.partStartBeats[id] = Math.round(next * 10) / 10;
+    refreshPartStart();
+    await autoSaveProject();
+  }
+
+  function ensurePartStartControl() {
+    const second = document.querySelector('#screen-rhythm .rhythm-layout>div:nth-child(2)');
+    if (!second || document.getElementById('partStartRow')) return;
+    const row = document.createElement('div');
+    row.id = 'partStartRow'; row.className = 'part-start-row';
+    row.innerHTML = '<span>この楽器は</span><button data-part-start="-1">−1拍</button><b id="partStartValue">0拍後</b><button data-part-start="1">＋1拍</button><span>から</span>';
+    second.appendChild(row);
+    row.querySelectorAll('[data-part-start]').forEach(b => b.onclick = () => adjustPartStart(Number(b.dataset.partStart)));
+  }
+
+  function refreshPartStart() {
+    const id = state.selectedInstrumentIds?.[state.rhythmIndex];
+    const value = Number(state.partStartBeats?.[id] || 0);
+    const el = document.getElementById('partStartValue');
+    if (el) el.textContent = `${value.toFixed(value % 1 ? 1 : 0)}拍後`;
+  }
+
+  function installPartStartPersistence() {
+    state.partStartBeats ||= {};
+    const baseSave = autoSaveProject;
+    autoSaveProject = async function() {
+      await baseSave();
+      if (!state.projectId) return;
+      const p = state.projects.find(x => x.id === state.projectId);
+      if (!p) return;
+      p.partStartBeats = structuredCloneSafe(state.partStartBeats || {});
+      await dbPut(STORE_PROJECTS, p);
+    };
+
+    const baseLoad = loadBestProjectForSong;
+    loadBestProjectForSong = async function() {
+      state.partStartBeats = {};
+      const ok = await baseLoad();
+      const p = state.projects.find(x => x.id === state.projectId);
+      state.partStartBeats = structuredCloneSafe(p?.partStartBeats || {});
+      return ok;
+    };
+
+    const baseRender = renderRhythmEditor;
+    renderRhythmEditor = function() {
+      const result = baseRender();
+      ensurePartStartControl();
+      refreshPartStart();
+      return result;
+    };
+  }
+
   function bindRefresh() {
     document.getElementById('songGrid')?.addEventListener('click', () => setTimeout(refreshControls, 0));
     document.getElementById('simpleTeacherBtn')?.addEventListener('click', () => setTimeout(refreshControls, 0));
+    document.getElementById('simpleTeacherClose')?.addEventListener('click', restoreYouTubePanel);
   }
 
   function boot() {
     addStyles();
+    installPartStartPersistence();
     createControls();
+    ensurePartStartControl();
     replaceTapHandlers();
     bindRefresh();
     setTimeout(() => { createControls(); replaceTapHandlers(); refreshControls(); }, 900);
