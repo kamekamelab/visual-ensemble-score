@@ -1,4 +1,4 @@
-const CACHE='digital-score-v2.1.1';
+const CACHE='digital-score-v3.0.0';
 const ASSETS=['./','./index.html','./styles.css','./app.js','./youtube-addon.js','./youtube-animation-fix.js','./simple-v2.js','./simple-v2-tap.js','./manifest.webmanifest'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
