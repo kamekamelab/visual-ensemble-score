@@ -26,10 +26,41 @@ function scoreContext(){
 
 const schema={type:'object',properties:{summary:{type:'string'},actions:{type:'array',items:{type:'object',properties:{type:{type:'string',enum:['set_bpm','shift_global','shift_instrument','delete_range','regenerate_instrument','add_note','set_taiko_pattern']},instrument:{anyOf:[{type:'string',enum:['taiko','bell','tamb','snare','bass','cymbal','triangle','castanet','maracas','xylophone','tonechime','recorder']},{type:'null'}]},value:{anyOf:[{type:'number'},{type:'null'}]},start:{anyOf:[{type:'number'},{type:'null'}]},end:{anyOf:[{type:'number'},{type:'null'}]},text:{anyOf:[{type:'string'},{type:'null'}]},kind:{anyOf:[{type:'string',enum:['hit','double','rest','phrase']},{type:'null'}]},pattern:{anyOf:[{type:'array',items:{type:'string'},minItems:4,maxItems:4},{type:'null'}]}},required:['type','instrument','value','start','end','text','kind','pattern'],additionalProperties:false}}},required:['summary','actions'],additionalProperties:false};
 
+function injectBellSpacing(){
+  const oldUpdate=window.updatePositions;
+  window.updatePositions=function(){
+    const t=audio.currentTime||0;
+    document.querySelectorAll('.note').forEach(d=>{
+      const id=d.dataset.lane,n=state.lanes[id]?.notes.find(x=>x.id===d.dataset.note);if(!n)return;
+      const off=(state.lanes[id].offset||0)+(state.startOffset||0);
+      const px=id==='bell'?420:PX_PER_SEC;
+      const x=START_X+(n.time+off-t)*px;
+      d.style.left=x+'px';
+      const laneEl=d.closest('.lane'),target=laneEl?.querySelector('.target'),tr=target?.getBoundingClientRect();
+      if(id==='taiko'&&n.kind==='double'){
+        d.classList.remove('current');
+        d.querySelectorAll('.miniHit').forEach(h=>{
+          if(!tr)return h.classList.remove('current');
+          const hr=h.getBoundingClientRect(),hc=(hr.left+hr.right)/2,tc=(tr.left+tr.right)/2;
+          h.classList.toggle('current',Math.abs(hc-tc)<=Math.max(10,hr.width*.22));
+        });
+        return;
+      }
+      if(id==='taiko'){d.classList.remove('current');return;}
+      const dr=d.getBoundingClientRect(),dc=(dr.left+dr.right)/2,tc=tr?(tr.left+tr.right)/2:0;
+      const active=!!tr&&Math.abs(dc-tc)<=Math.max(10,Math.min(24,dr.width*.16));
+      d.classList.toggle('current',n.kind!=='rest'&&n.kind!=='bell-rest'&&active);
+    });
+  };
+  if(typeof oldUpdate==='function')window.updatePositions();
+}
+
 function injectUI(){
   const style=document.createElement('style');style.textContent=`
-.note.current:not(.taiko-double){background:#fff36b!important;border-color:#d83b35!important;box-shadow:0 0 0 10px #ffe66a,0 0 24px 14px #ffd54a,0 4px 8px #0002!important;transform:translateY(-50%) scale(1.14)!important;z-index:9}
+.note.current:not(.taiko-double):not(.taiko-hit):not(.taiko-rest){background:#fff36b!important;border-color:#d83b35!important;box-shadow:0 0 0 10px #ffe66a,0 0 24px 14px #ffd54a,0 4px 8px #0002!important;transform:translateY(-50%) scale(1.14)!important;z-index:9}
+.note.bell-hit,.note.bell-rest{width:50px!important;height:50px!important;min-height:50px!important;font-size:11px!important}
 #aiEditBtn{background:#6f55c7;color:#fff;border-color:#6f55c7}.aiBackdrop{position:fixed;inset:0;background:#0008;z-index:300;display:grid;place-items:center;padding:14px}.aiBackdrop[hidden]{display:none}.aiPanel{width:min(680px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:20px;padding:18px;box-shadow:0 18px 60px #0005}.aiHead{display:flex;justify-content:space-between;align-items:center;gap:10px}.aiHead h2{margin:0}.aiPanel textarea{width:100%;min-height:110px;border:2px solid #cfc5dd;border-radius:12px;padding:12px;font:inherit;font-size:17px}.aiKey{width:100%;border:2px solid #ddd;border-radius:10px;padding:9px;margin:8px 0}.aiActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.aiRun{background:#6f55c7;color:#fff;border-color:#6f55c7}.aiUndo{background:#fff}.aiMsg{margin-top:10px;padding:10px;background:#f6f2ff;border-radius:10px;min-height:42px}.aiExamples{font-size:13px;color:#655b70;line-height:1.6}.aiNote{font-size:12px;color:#766e7e;margin-top:7px}`;document.head.appendChild(style);
+  injectBellSpacing();
   const btn=document.createElement('button');btn.id='aiEditBtn';btn.textContent='✨ AIで直す';document.querySelector('.controls')?.appendChild(btn);
   const back=document.createElement('div');back.className='aiBackdrop';back.id='aiBackdrop';back.hidden=true;back.innerHTML=`<div class="aiPanel"><div class="aiHead"><h2>✨ AIで絵譜を直す</h2><button id="aiClose">×</button></div><p class="aiExamples">例：「太鼓を0.2秒遅く」「BPMを103.5に」「今いるところから5秒間の太鼓を消して」「太鼓を タン・タタ・タン・ウン に戻して」</p><textarea id="aiInstruction" placeholder="直したいことを日本語で入力"></textarea><input id="aiKey" class="aiKey" type="password" autocomplete="off" placeholder="OpenAI APIキー（保存しません）"><div class="aiNote">APIキーはこの画面を開いている間だけ使い、アプリには保存しません。</div><div class="aiActions"><button id="aiRun" class="aiRun">AIに直してもらう</button><button id="aiUndo" class="aiUndo">↶ AI修正を元に戻す</button></div><div id="aiMsg" class="aiMsg">指示を入力してください。</div></div>`;document.body.appendChild(back);
   btn.onclick=()=>{back.hidden=false;$('aiInstruction').focus()};$('aiClose').onclick=()=>back.hidden=true;back.addEventListener('click',e=>{if(e.target===back)back.hidden=true});$('aiUndo').onclick=()=>{if(!undoSnapshot)return $('aiMsg').textContent='まだAI修正はありません。';restore(undoSnapshot);undoSnapshot=null;$('aiMsg').textContent='AI修正前に戻しました。'};$('aiRun').onclick=runAI;
