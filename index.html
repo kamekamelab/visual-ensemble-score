@@ -13,7 +13,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Y
 <script>
 (async()=>{
   try{
-    const b64=(await (await fetch('./embedded/app.gz.b64?rev=20260910a',{cache:'no-store'})).text()).trim();
+    const urls=['./embedded/gz0.txt?rev=20260910b','./embedded/gz1.txt?rev=20260910b','./embedded/gz2.txt?rev=20260910b'];
+    const parts=await Promise.all(urls.map(async u=>(await (await fetch(u,{cache:'no-store'})).text()).trim()));
+    const b64=parts.join('');
     const bin=atob(b64),bytes=new Uint8Array(bin.length);
     for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
     const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
