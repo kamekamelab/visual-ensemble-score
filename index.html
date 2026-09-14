@@ -4,27 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>デジタル絵譜</title>
-<style>
-body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#faf7ea;color:#3c321e;margin:0;display:grid;place-items:center;min-height:100vh}#msg{padding:24px;text-align:center;font-weight:700}
-</style>
+<style>body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;background:#faf7ea;color:#3c321e;margin:0;display:grid;place-items:center;min-height:100vh}#msg{padding:24px;text-align:center;font-weight:700}</style>
 </head>
 <body>
 <div id="msg">デジタル絵譜を読み込んでいます…</div>
 <script>
 (async()=>{
-  try{
-    const urls=['./embedded/gz0.txt?rev=20260910b','./embedded/gz1.txt?rev=20260910b','./embedded/gz2.txt?rev=20260910b'];
-    const parts=await Promise.all(urls.map(async u=>(await (await fetch(u,{cache:'no-store'})).text()).trim()));
-    const b64=parts.join('');
-    const bin=atob(b64),bytes=new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
-    const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
-    const html=await new Response(stream).text();
-    document.open();document.write(html);document.close();
-  }catch(e){
-    console.error(e);
-    document.getElementById('msg').innerHTML='読み込みに失敗しました。<br>ページを再読み込みしてください。';
-  }
+ try{
+  const urls=['./embedded/gz0.txt?rev=20260910b','./embedded/gz1.txt?rev=20260910b','./embedded/gz2.txt?rev=20260910b'];
+  const parts=await Promise.all(urls.map(async u=>(await (await fetch(u,{cache:'no-store'})).text()).trim()));
+  const b64=parts.join(''),bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  let html=await new Response(stream).text();
+  const expose=`window.__scoreApp={INSTRUMENTS,addPart,edited,score,remember,message,getProject:()=>project,getViewPart:()=>viewPart,showPart:(id)=>{viewPart=id;const s=$('partView');if(s)s.value=id;score.mount(id);renderControls();}};\ninit();\n\nreturn {};`;
+  html=html.replace('init();\n\nreturn {};',expose);
+  html=html.replace('</body></html>','<script src="./face-addon.js?rev=20260914a"><\/script></body></html>');
+  document.open();document.write(html);document.close();
+ }catch(e){console.error(e);document.getElementById('msg').innerHTML='読み込みに失敗しました。<br>ページを再読み込みしてください。';}
 })();
 </script>
 </body>
