@@ -16,9 +16,13 @@
   const b64=parts.join(''),bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
   const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
   let html=await new Response(stream).text();
+  // 教材書き出し時は、実際の音源Blobサイズをメタデータに記録する。
+  html=html.replace("  validateProject(project);\\n  if(!mediaBlob || mediaBlob.size!==project.media?.size) throw Error('教材に含める音源がありません。');\\n  const meta=new TextEncoder().encode(JSON.stringify(project));","  if(!mediaBlob || !mediaBlob.size) throw Error('教材に含める音源がありません。');\\n  const snapshot=structuredClone(project);\\n  if(!snapshot.media)throw Error('教材に含める音源がありません。');\\n  snapshot.media.size=mediaBlob.size;\\n  validateProject(snapshot);\\n  const meta=new TextEncoder().encode(JSON.stringify(snapshot));");
+  // 旧版で記録サイズがずれた教材でも、実際にファイル内に残っている音源を優先して復元する。
+  html=html.replace("  if(project.media?.size!==file.size-12-len)throw Error('教材内の音源が不足しています。');\\n  return {project,blob:file.slice(12+len,file.size,project.media.type)};","  const mediaStart=12+len,actualSize=file.size-mediaStart;\\n  if(!project.media||actualSize<=0)throw Error('教材内に音源データがありません。');\\n  if(project.media.size!==actualSize)project.media.size=actualSize;\\n  return {project,blob:file.slice(mediaStart,file.size,project.media.type)};");
   const expose=`window.__scoreApp={INSTRUMENTS,addPart,edited,score,remember,message,getProject:()=>project,getViewPart:()=>viewPart,showPart:(id)=>{viewPart=id;const s=$('partView');if(s)s.value=id;score.mount(id);renderControls();}};\ninit();\n\nreturn {};`;
   html=html.replace('init();\n\nreturn {};',expose);
-  html=html.replace('</body></html>','<script src="./face-addon.js?rev=20260914a"><\/script></body></html>');
+  html=html.replace('</body></html>','<script src="./face-addon.js?rev=20260927b"><\/script></body></html>');
   document.open();document.write(html);document.close();
  }catch(e){console.error(e);document.getElementById('msg').innerHTML='読み込みに失敗しました。<br>ページを再読み込みしてください。';}
 })();
