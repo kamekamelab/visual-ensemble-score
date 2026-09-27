@@ -19,7 +19,7 @@ async function photoData(file){
  return c.toDataURL('image/jpeg',.86);
 }
 function addStyles(){const s=document.createElement('style');s.textContent=`
-.part-icon img{width:76px!important;height:76px!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center 38%!important;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px #0003}.part-icon:has(img){height:82px}.student-picker{display:flex;gap:10px;align-items:center;overflow-x:auto;padding:10px 20px 14px;background:#fffaf0;border-bottom:1px solid #eadfbe}.student-picker-guide{flex:0 0 auto;font-size:13px;font-weight:800;color:#6b5a31;margin-right:2px}.student-choice{position:relative;flex:0 0 auto;display:grid;place-items:center;gap:3px;min-width:78px;padding:7px 9px}.student-choice.active:after{content:"✓";position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:#2f7d32;color:#fff;font-size:14px;font-weight:900;box-shadow:0 2px 5px #0003}.student-choice img{width:70px;height:70px;border-radius:50%;object-fit:cover;object-position:center 38%;border:3px solid #fff;box-shadow:0 2px 8px #0003}.student-choice.active{background:#fff0b8;border-color:#b88918}.student-choice .fallback{font-size:30px;height:54px;display:grid;place-items:center}.student-choice small{font-size:12px;color:#3c321e;font-weight:750}body.performing .student-picker{padding:8px 10px}body.performing .student-choice{min-width:112px}body.performing .student-choice img{width:92px;height:92px}body.performing .student-choice small{font-size:16px}body.performing .part-icon:has(img){height:112px!important}body.performing .part-icon img{width:104px!important;height:104px!important}body.performing .part-label strong{font-size:24px!important}.student-setup{padding:12px;background:#fffaf0;border:1px solid #e6d7ab;border-radius:10px;margin:10px 0 16px}.student-setup h3{margin:0 0 8px}.student-preview{display:flex;align-items:center;gap:10px;margin-top:8px}.student-preview img{width:84px;height:84px;border-radius:50%;object-fit:cover;object-position:center 38%}.face-tool{background:#fff8dd!important}.student-picker-toggle{display:none;justify-content:flex-end;align-items:center;padding:4px 10px;background:#fffaf0;border-bottom:1px solid #eadfbe;min-height:30px}.student-picker-toggle button{min-height:30px!important;padding:3px 10px!important;font-size:12px!important;opacity:.82}body.performing .student-picker-toggle.active{display:flex}body.performing .student-picker[hidden]{display:none!important}body.performing.performance-compact #studentPickerToggle{position:sticky;top:0;z-index:45;background:#fffaf0ee;padding:3px 8px;min-height:28px}body.performing.performance-compact #studentPickerToggle button{font-size:11px!important;min-height:28px!important;padding:2px 8px!important}
+.part-icon img{width:76px!important;height:76px!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center 38%!important;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px #0003}.part-icon:has(img){height:82px}.student-picker{display:flex;gap:10px;align-items:center;overflow-x:auto;padding:10px 20px 14px;background:#fffaf0;border-bottom:1px solid #eadfbe}.student-picker-guide{flex:0 0 auto;font-size:13px;font-weight:800;color:#6b5a31;margin-right:2px}.student-choice{position:relative;flex:0 0 auto;display:grid;place-items:center;gap:3px;min-width:78px;padding:7px 9px}.student-choice.active:after{content:"✓";position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:#2f7d32;color:#fff;font-size:14px;font-weight:900;box-shadow:0 2px 5px #0003}.student-choice img{width:70px;height:70px;border-radius:50%;object-fit:cover;object-position:center 38%;border:3px solid #fff;box-shadow:0 2px 8px #0003}.student-choice.active{background:#fff0b8;border-color:#b88918}.student-clear{background:#fff!important;border-style:dashed!important}.student-clear .fallback{font-weight:900;color:#7b6a45}.student-choice .fallback{font-size:30px;height:54px;display:grid;place-items:center}.student-choice small{font-size:12px;color:#3c321e;font-weight:750}body.performing .student-picker{padding:8px 10px}body.performing .student-choice{min-width:112px}body.performing .student-choice img{width:92px;height:92px}body.performing .student-choice small{font-size:16px}body.performing .part-icon:has(img){height:112px!important}body.performing .part-icon img{width:104px!important;height:104px!important}body.performing .part-label strong{font-size:24px!important}.student-setup{padding:12px;background:#fffaf0;border:1px solid #e6d7ab;border-radius:10px;margin:10px 0 16px}.student-setup h3{margin:0 0 8px}.student-preview{display:flex;align-items:center;gap:10px;margin-top:8px}.student-preview img{width:84px;height:84px;border-radius:50%;object-fit:cover;object-position:center 38%}.face-tool{background:#fff8dd!important}.student-picker-toggle{display:none;justify-content:flex-end;align-items:center;padding:4px 10px;background:#fffaf0;border-bottom:1px solid #eadfbe;min-height:30px}.student-picker-toggle button{min-height:30px!important;padding:3px 10px!important;font-size:12px!important;opacity:.82}body.performing .student-picker-toggle.active{display:flex}body.performing .student-picker[hidden]{display:none!important}body.performing.performance-compact #studentPickerToggle{position:sticky;top:0;z-index:45;background:#fffaf0ee;padding:3px 8px;min-height:28px}body.performing.performance-compact #studentPickerToggle button{font-size:11px!important;min-height:28px!important;padding:2px 8px!important}
 `;document.head.append(s);}
 function setupDialog(){
  const form=$('partForm');if(!form||$('studentName'))return;
@@ -52,7 +52,6 @@ function syncSelection(){
    else parts.forEach(p=>selectedIds.add(p.id));
    selectionReady=true;
  }
- if(parts.length&&!selectedIds.size)selectedIds.add(parts[0].id);
  return parts;
 }
 function allSelected(parts){return !!parts.length&&parts.every(p=>selectedIds.has(p.id));}
@@ -123,7 +122,6 @@ function renderPicker(){
    b.onclick=()=>{
      if(all){selectedIds=new Set(parts.map(p=>p.id));}
      else if(selectedIds.has(part.id)){
-       if(selectedIds.size===1){msg('1人以上えらんでください。');return;}
        selectedIds.delete(part.id);
      }else selectedIds.add(part.id);
      if(a.getViewPart()!=='all')a.showPart('all');
@@ -131,7 +129,18 @@ function renderPicker(){
    };
    return b;
  };
- root.append(make(null,'みんな',true));for(const p of parts)root.append(make(p,p.studentName||p.name));
+ root.append(make(null,'みんな',true));
+ const clear=document.createElement('button');
+ clear.type='button';clear.className='student-choice student-clear';clear.setAttribute('aria-label','演奏する絵譜をすべて解除');
+ const cf=document.createElement('span');cf.className='fallback';cf.textContent='×';clear.append(cf);
+ const cn=document.createElement('small');cn.textContent='すべて解除';clear.append(cn);
+ clear.onclick=()=>{
+   selectedIds.clear();selectionReady=true;
+   if(a.getViewPart()!=='all')a.showPart('all');
+   setTimeout(()=>{applySelection();renderPicker();addFaceTools();},0);
+ };
+ root.append(clear);
+ for(const p of parts)root.append(make(p,p.studentName||p.name));
  applySelection();
 }
 function addFaceTools(){
