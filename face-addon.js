@@ -20,7 +20,7 @@ function addStyles(){const s=document.createElement('style');s.textContent=`
 `;document.head.append(s);}
 function setupDialog(){
  const form=$('partForm');if(!form||$('studentName'))return;
- const grid=$('instrumentGrid'),box=document.createElement('div');box.className='student-setup';box.innerHTML='<h3>① この子を登録</h3><label>なまえ（ひらがな）<input id="studentName" maxlength="20" placeholder="例：ゆうか"></label><label>顔写真<input id="studentPhoto" type="file" accept="image/png,image/jpeg,image/webp" capture="user"></label><div id="studentPreview" class="student-preview" hidden><img alt=""><b></b></div><p class="hint">顔写真が、今までの太鼓や鈴などの楽器イラストの場所に表示されます。</p><h3>② 楽器をえらぶ</h3>';
+ const grid=$('instrumentGrid'),box=document.createElement('div');box.className='student-setup';box.innerHTML='<h3>① この子を登録</h3><label>なまえ（ひらがな）<input id="studentName" maxlength="20" placeholder="例：はる"></label><label>顔写真<input id="studentPhoto" type="file" accept="image/png,image/jpeg,image/webp" capture="user"></label><div id="studentPreview" class="student-preview" hidden><img alt=""><b></b></div><p class="hint">顔写真が、今までの太鼓や鈴などの楽器イラストの場所に表示されます。</p><h3>② 楽器をえらぶ</h3>';
  grid.parentNode.insertBefore(box,grid);
  const photo=$('studentPhoto');photo.onchange=async()=>{try{pendingPhoto=await photoData(photo.files?.[0]);const p=$('studentPreview');p.hidden=!pendingPhoto;if(pendingPhoto)p.querySelector('img').src=pendingPhoto;}catch(e){pendingPhoto='';msg(e.message);}};
  $('studentName').oninput=()=>{const p=$('studentPreview');p.querySelector('b').textContent=$('studentName').value;};
