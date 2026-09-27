@@ -74,6 +74,19 @@ function makeUI(){
  $('shareNative').onclick=()=>nativeShare();
  $('shareSave').onclick=()=>downloadPrepared();
 }
+async function buildPortableLesson(){
+ const a=A(),project=a?.getProject?.(),media=a?.getMediaBlob?.();
+ if(!project||!media||!media.size)throw Error('先に音源入りの教材を開いてください。');
+ const snapshot=structuredClone(project);
+ if(!snapshot.media)snapshot.media={name:'共有音源',type:media.type||'application/octet-stream',size:media.size};
+ snapshot.media.size=media.size;
+ if(!snapshot.media.type)snapshot.media.type=media.type||'application/octet-stream';
+ const meta=new TextEncoder().encode(JSON.stringify(snapshot));
+ const header=new ArrayBuffer(12),view=new DataView(header),magic=[68,83,72,65,82,69,49,10];
+ magic.forEach((b,i)=>view.setUint8(i,b));
+ view.setUint32(8,meta.length,false);
+ return new Blob([header,meta,media],{type:'application/octet-stream'});
+}
 async function prepareShare(){
  const d=$('shareLessonModal');
  d.showModal();
@@ -82,10 +95,8 @@ async function prepareShare(){
  $('shareSave').disabled=true;
  $('shareStatus').textContent='共有教材を準備しています…';
  try{
-  const a=A();
-  if(!a?.syncExportBundle)throw Error('教材を書き出せませんでした。');
-  const blob=await a.syncExportBundle();
-  const name=safeName(a.getProject?.()?.title)+'.dscore';
+  const blob=await buildPortableLesson();
+  const name=safeName(A()?.getProject?.()?.title)+'.dscore';
   preparedFile=new File([blob],name,{type:'application/octet-stream'});
   $('shareStatus').innerHTML='<span class="share-ready">✓ 準備できました</span>　'+bytes(preparedFile.size);
   $('shareSave').disabled=false;
@@ -128,8 +139,14 @@ async function importShared(file){
   if(!file)return;
   msg('共有教材を読み込んでいます…');
   const a=A();
-  if(!a?.syncImportBundle)throw Error('共有教材の読み込み機能を準備できませんでした。');
-  const result=await a.syncImportBundle(file);
+  if(!a?.syncLoadShared)throw Error('共有教材の読み込み機能を準備できませんでした。');
+  if(file.size<13)throw Error('共有教材ファイルが小さすぎます。');
+  const head=await file.slice(0,12).arrayBuffer(),len=new DataView(head).getUint32(8,false);
+  if(!len||len>5000000||12+len>=file.size)throw Error('共有教材の形式が正しくありません。');
+  const project=JSON.parse(await file.slice(12,12+len).text());
+  const audio=file.slice(12+len,file.size,project?.media?.type||'application/octet-stream');
+  if(!audio.size)throw Error('共有教材に音源が入っていません。');
+  const result=await a.syncLoadShared(project,audio);
   msg('「'+(result?.title||'教材')+'」を読み込みました。');
   a.showPart?.('all');
  }catch(e){
