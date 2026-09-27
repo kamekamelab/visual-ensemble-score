@@ -4,7 +4,7 @@ const A=()=>window.__scoreApp;
 const $=id=>document.getElementById(id);
 const LIB='https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js';
 let peer=null,mode='',room='',hostConns=new Map(),guestConn=null,guestReady=false,clockOffset=0,pingSamples=[],clientSeq=0;
-let teacherPrepared=false,clockTimer=0,correctionTimer=0,activeStartAt=0,activeStartPosition=0,incomingBundle=null,sendingBundle=false,visualRaf=0,visualStartAt=0,visualStartPosition=0,visualLastFrame=0;
+let teacherPrepared=false,clockTimer=0,correctionTimer=0,activeStartAt=0,activeStartPosition=0,incomingBundle=null,sendingBundle=false,visualRaf=0,visualStartAt=0,visualStartPosition=0,visualLastFrame=0,countCtx=null,countTimers=[];
 
 function msg(t){const a=A();if(a?.message)a.message(t);}
 function randRoom(){return String(Math.floor(1000+Math.random()*9000));}
@@ -35,7 +35,24 @@ function setPanels(which){$('syncHome').classList.toggle('sync-hidden',!!which);
 function setBadge(text){const b=$('syncBadge');if(!b)return;b.textContent=text;b.hidden=!text;}
 function stopCorrection(){clearInterval(correctionTimer);correctionTimer=0;activeStartAt=0;A()?.syncRestoreRate?.();}
 function stopVisual(){cancelAnimationFrame(visualRaf);visualRaf=0;visualStartAt=0;visualLastFrame=0;}
-function destroyPeer(){clearInterval(clockTimer);clockTimer=0;stopCorrection();stopVisual();try{peer?.destroy();}catch{}peer=null;hostConns.clear();guestConn=null;guestReady=false;teacherPrepared=false;clockOffset=0;pingSamples=[];incomingBundle=null;sendingBundle=false;}
+function clearCountIn(){for(const t of countTimers)clearTimeout(t);countTimers=[];}
+async function ensureCountAudio(){
+ const C=window.AudioContext||window.webkitAudioContext;if(!C)throw Error('この端末ではカウント音を鳴らせません。');
+ countCtx ||= new C();await countCtx.resume();return countCtx;
+}
+function scheduleTan(ctx,at){
+ const o=ctx.createOscillator(),g=ctx.createGain();
+ o.type='triangle';o.frequency.setValueAtTime(230,at);o.frequency.exponentialRampToValueAtTime(120,at+.07);
+ g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(.28,at+.004);g.gain.exponentialRampToValueAtTime(.0001,at+.095);
+ o.connect(g);g.connect(ctx.destination);o.start(at);o.stop(at+.1);
+ o.onended=()=>{try{o.disconnect();g.disconnect();}catch{}};
+}
+async function playCountIn(firstTapDelayMs,beatMs,count=8){
+ clearCountIn();const ctx=await ensureCountAudio(),firstAt=ctx.currentTime+firstTapDelayMs/1000;
+ for(let i=0;i<count;i++)scheduleTan(ctx,firstAt+i*beatMs/1000);
+ for(let i=0;i<count;i++)countTimers.push(setTimeout(()=>{$('hostStatus').textContent=`カウント ${i+1} / ${count}　タン`;},firstTapDelayMs+i*beatMs));
+}
+function destroyPeer(){clearInterval(clockTimer);clockTimer=0;stopCorrection();stopVisual();clearCountIn();try{peer?.destroy();}catch{}peer=null;hostConns.clear();guestConn=null;guestReady=false;teacherPrepared=false;clockOffset=0;pingSamples=[];incomingBundle=null;sendingBundle=false;}
 function peerErrorText(err){const t=err?.type||'';if(t==='peer-unavailable')return 'そのルームが見つかりません。番号を確認してください。';if(t==='network'||t==='server-error'||t==='socket-error')return '通信サーバーにつながりません。学校のWi-Fi設定を確認してください。';return '接続できませんでした。もう一度お試しください。';}
 async function startHost(retry=0){
  try{await loadPeer();destroyPeer();mode='host';room=randRoom();setPanels('host');$('hostCode').textContent=room;$('hostStatus').textContent='ルームを作っています…';renderDevices();peer=new Peer(peerId(room));
@@ -155,13 +172,20 @@ function scheduleRemoteStart(teacherAt,position){
 async function hostCommand(type){
  if(type==='start'){
   const notReady=[...hostConns.values()].filter(x=>!x.ready).length;if(notReady&&!confirm(`準備OKでない端末が${notReady}台あります。スタートしますか？`))return;
-  const delay=3000,at=Date.now()+delay,position=0;
+  if(!teacherPrepared){await prepareHost();if(!teacherPrepared)return;}
+  clearCountIn();stopCorrection();stopVisual();
+  const beatSec=Math.max(.12,Math.min(4.2,Number(A()?.syncBeatSeconds?.())||.5)),beatMs=beatSec*1000,count=8,lead=500;
+  const songDelay=lead+beatMs*count,at=Date.now()+songDelay,position=0;
   for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'start',at,position});
-  if(teacherPrepared){A()?.syncScheduleStart?.(delay,position);setTimeout(()=>startCorrection(at,position),delay+120);}
-  $('hostStatus').textContent='3秒後にいっせいスタートします。開始後も自動でズレを補正します。';return;
+  A()?.syncScheduleStart?.(songDelay,position);
+  setTimeout(()=>startCorrection(at,position),songDelay+120);
+  await playCountIn(lead,beatMs,count);
+  $('hostStatus').textContent=`8拍カウント後にスタートします（${Math.round(60/beatSec)} BPM相当）`;
+  countTimers.push(setTimeout(()=>{$('hostStatus').textContent='▶ 演奏スタート';},songDelay));
+  return;
  }
- if(type==='pause'){const position=A()?.getSyncTime?.()||0;for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'pause',position});stopCorrection();if(teacherPrepared)A()?.syncPause?.();return;}
- if(type==='reset'){for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'reset',position:0});stopCorrection();if(teacherPrepared)A()?.syncSeek?.(0);return;}
+ if(type==='pause'){clearCountIn();const position=A()?.getSyncTime?.()||0;for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'pause',position});stopCorrection();if(teacherPrepared)A()?.syncPause?.();return;}
+ if(type==='reset'){clearCountIn();for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'reset',position:0});stopCorrection();if(teacherPrepared)A()?.syncSeek?.(0);return;}
 }
 function init(){if(!A())return setTimeout(init,40);addStyles();makeUI();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
