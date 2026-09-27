@@ -140,18 +140,37 @@ async function importShared(file){
   msg('共有教材を読み込んでいます…');
   const a=A();
   if(!a?.syncLoadShared)throw Error('共有教材の読み込み機能を準備できませんでした。');
-  if(file.size<13)throw Error('共有教材ファイルが小さすぎます。');
-  const head=await file.slice(0,12).arrayBuffer(),len=new DataView(head).getUint32(8,false);
-  if(!len||len>5000000||12+len>=file.size)throw Error('共有教材の形式が正しくありません。');
-  const project=JSON.parse(await file.slice(12,12+len).text());
-  const audio=file.slice(12+len,file.size,project?.media?.type||'application/octet-stream');
-  if(!audio.size)throw Error('共有教材に音源が入っていません。');
-  const result=await a.syncLoadShared(project,audio);
-  msg('「'+(result?.title||'教材')+'」を読み込みました。');
-  a.showPart?.('all');
+  let firstError=null;
+  try{
+   if(file.size<13)throw Error('ファイルサイズが小さすぎます。');
+   const head=await file.slice(0,12).arrayBuffer(),view=new DataView(head),len=view.getUint32(8,false);
+   if(!len||len>5000000||12+len>=file.size)throw Error('メタデータ長が不正です。');
+   const text=await file.slice(12,12+len).text();
+   const project=JSON.parse(text);
+   const audio=file.slice(12+len,file.size,project?.media?.type||'application/octet-stream');
+   if(!audio.size)throw Error('音源データがありません。');
+   const result=await a.syncLoadShared(project,audio);
+   msg('「'+(result?.title||'教材')+'」を読み込みました。');
+   a.showPart?.('all');
+   return;
+  }catch(e){firstError=e;console.warn('直接読み込みに失敗',e);}
+  if(a?.syncImportBundle){
+   try{
+    const result=await a.syncImportBundle(file);
+    msg('「'+(result?.title||'教材')+'」を読み込みました。');
+    a.showPart?.('all');
+    return;
+   }catch(e){
+    console.warn('旧方式でも失敗',e);
+    throw Error('直接読込: '+(firstError?.message||'不明')+' ／ 旧方式: '+(e?.message||'不明'));
+   }
+  }
+  throw firstError||Error('共有教材を読み込めませんでした。');
  }catch(e){
   console.error(e);
-  msg('共有教材を読み込めませんでした。ファイルを確認してください。');
+  const detail='共有教材を読み込めませんでした：'+(e?.message||'原因不明')+'（'+file.name+' / '+bytes(file.size)+'）';
+  msg(detail);
+  alert(detail);
  }finally{
   if(input)input.value='';
  }
