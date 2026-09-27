@@ -23,7 +23,7 @@ function makeUI(){if($('syncModal'))return;
  const area=$('performanceArea');const heading=area?.querySelector('.workspace-heading .actions');if(heading)heading.prepend(open);else document.body.append(open);
  const d=document.createElement('dialog');d.id='syncModal';d.className='sync-modal';d.innerHTML=`
  <div class="dialog-head"><h2>📡 みんなで演奏</h2><button id="syncClose">閉じる</button></div>
- <p class="sync-note">先生の端末でルームを作り、ほかの端末は4けたの番号で参加します。端末ごとの時計差を測り、開始後も自動でズレを補正します。各端末で同じ教材を読み込んでから使ってください。</p>
+ <p class="sync-note">先生の端末でルームを作り、ほかの端末は4けたの番号で参加します。端末ごとの時計差を測り、開始後も、必要なときだけ滑らかにズレを補正します。各端末で同じ教材を読み込んでから使ってください。</p>
  <div id="syncHome" class="sync-choice"><button id="makeRoom" class="primary">先生<br><small>ルームを作る</small></button><button id="joinMode">子ども用端末<br><small>ルームに参加</small></button></div>
  <div id="hostPanel" class="sync-box sync-hidden"><div class="sync-status">ルーム番号</div><div id="hostCode" class="room-code">----</div><div id="hostStatus">接続を待っています。</div><div id="deviceList" class="device-list"></div><div class="sync-actions"><button id="hostPrepare">この端末も準備OK</button><button id="hostStart" class="sync-start">▶ いっせいスタート</button><button id="hostPause">Ⅱ 一時停止</button><button id="hostReset">↺ 最初へ</button></div></div>
  <div id="guestPanel" class="sync-box sync-hidden"><label>ルーム番号<input id="roomInput" class="sync-room-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="0000"></label><div class="sync-actions"><button id="joinRoom" class="primary">参加する</button><button id="guestPrepare" disabled>この端末を準備OK</button></div><p id="guestStatus" class="sync-status">ルーム番号を入れてください。</p></div>`;
@@ -69,7 +69,7 @@ function sendPing(){if(guestConn?.open)guestConn.send({type:'ping',t0:Date.now()
 function startClockSync(){
  pingSamples=[];clearInterval(clockTimer);clockTimer=0;
  let n=0;const burst=()=>{if(!guestConn?.open||n>=8)return;sendPing();n++;setTimeout(burst,140);};burst();
- clockTimer=setInterval(sendPing,3000);
+ clockTimer=setInterval(sendPing,10000);
 }
 function guestData(data){if(!data||typeof data!=='object')return;
  if(data.type==='pong'){const t3=Date.now(),rtt=t3-data.t0,offset=((data.t1-data.t0)+(data.t2-t3))/2;pingSamples.push({rtt,offset});if(pingSamples.length>18)pingSamples.shift();const best=[...pingSamples].sort((a,b)=>a.rtt-b.rtt).slice(0,5);clockOffset=best.reduce((sum,x)=>sum+x.offset,0)/best.length;}
@@ -87,7 +87,7 @@ function expectedPosition(){
 function startCorrection(teacherAt,position){
  stopCorrection();activeStartAt=Number(teacherAt)||0;activeStartPosition=Number(position)||0;
  const run=()=>{if(!activeStartAt)return;const expected=expectedPosition();A()?.syncCorrect?.(expected);};
- setTimeout(run,180);correctionTimer=setInterval(run,350);
+ setTimeout(run,350);correctionTimer=setInterval(run,1200);
 }
 function scheduleRemoteStart(teacherAt,position){
  const localAt=teacherAt-clockOffset,delay=Math.max(0,localAt-Date.now());
