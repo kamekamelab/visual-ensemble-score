@@ -24,7 +24,7 @@ function blobToB64(blob){
   return btoa(s);
  });
 }
-function escapeScript(s){return String(s).replace(/<\\/script/gi,'<\\/scr'+'ipt');}
+function escapeScript(s){return String(s).replace(/<\/script/gi,'<\\/scr'+'ipt');}
 function addStyles(){
  const s=document.createElement('style');s.textContent=`
 .share-open{background:#f4f0ff!important;border-color:#9482ca!important}
