@@ -25,7 +25,7 @@ function makeUI(){if($('syncModal'))return;
  <div class="dialog-head"><h2>📡 みんなで演奏</h2><button id="syncClose">閉じる</button></div>
  <p class="sync-note">先生の端末でルームを作り、ほかの端末は4けたの番号で参加します。子機には絵譜・顔写真・設定だけを送り、音源は先生の端末だけで再生します。iPadは軽量な絵譜表示専用です。</p>
  <div id="syncHome" class="sync-choice"><button id="makeRoom" class="primary">先生<br><small>ルームを作る</small></button><button id="joinMode">子ども用端末<br><small>ルームに参加</small></button></div>
- <div id="hostPanel" class="sync-box sync-hidden"><div class="sync-status">ルーム番号</div><div id="hostCode" class="room-code">----</div><div id="hostStatus">接続を待っています。</div><div id="deviceList" class="device-list"></div><div class="sync-actions"><button id="sendBundle">絵譜をもう一度送る</button><button id="hostPrepare">この端末も準備OK</button><button id="hostStart" class="sync-start">▶ いっせいスタート</button><button id="hostPause">Ⅱ 一時停止</button><button id="hostReset">↺ 最初へ</button></div></div>
+ <div id="hostPanel" class="sync-box sync-hidden"><div class="sync-status">ルーム番号</div><div id="hostCode" class="room-code">----</div><div id="hostStatus">接続を待っています。</div><div id="deviceList" class="device-list"></div><div class="sync-actions"><button id="sendBundle">絵譜をもう一度送る</button><button id="hostPrepare">この端末も準備OK</button><button id="hostStart" class="sync-start">▶ 8拍カウント → スタート</button><button id="hostPause">Ⅱ 一時停止</button><button id="hostReset">↺ 最初へ</button></div></div>
  <div id="guestPanel" class="sync-box sync-hidden"><label>ルーム番号<input id="roomInput" class="sync-room-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="0000"></label><div class="sync-actions"><button id="joinRoom" class="primary">参加する</button><button id="guestPrepare" disabled>この端末を準備OK</button></div><p id="guestStatus" class="sync-status">ルーム番号を入れてください。</p></div>`;
  document.body.append(d);
  const badge=document.createElement('button');badge.id='syncBadge';badge.className='sync-badge';badge.hidden=true;badge.onclick=()=>d.showModal();document.body.append(badge);
@@ -174,6 +174,7 @@ async function hostCommand(type){
   const notReady=[...hostConns.values()].filter(x=>!x.ready).length;if(notReady&&!confirm(`準備OKでない端末が${notReady}台あります。スタートしますか？`))return;
   if(!teacherPrepared){await prepareHost();if(!teacherPrepared)return;}
   clearCountIn();stopCorrection();stopVisual();
+  await ensureCountAudio();
   const beatSec=Math.max(.12,Math.min(4.2,Number(A()?.syncBeatSeconds?.())||.5)),beatMs=beatSec*1000,count=8,lead=500;
   const songDelay=lead+beatMs*count,at=Date.now()+songDelay,position=0;
   for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'start',at,position});
