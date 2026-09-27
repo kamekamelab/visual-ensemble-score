@@ -28,20 +28,29 @@ function addStyles(){
 }
 function makeUI(){
  if($('shareLessonBtn'))return;
- const actions=$('performanceArea')?.querySelector('.workspace-heading .actions');
+ const saveActions=$('saveDialog')?.querySelector('.actions');
 
  const shareBtn=document.createElement('button');
  shareBtn.id='shareLessonBtn';
  shareBtn.className='share-open';
- shareBtn.textContent='共有する';
+ shareBtn.textContent='共有する';shareBtn.title='AirDrop・LINEなどで共有';
 
  const importBtn=document.createElement('button');
  importBtn.id='importSharedLessonBtn';
  importBtn.className='share-import-open';
- importBtn.textContent='共有教材を読み込む';
+ importBtn.textContent='共有教材を読み込む';importBtn.title='AirDrop・LINEなどで受け取った教材を読み込む';
 
- if(actions){actions.prepend(importBtn);actions.prepend(shareBtn);}
- else{document.body.append(shareBtn,importBtn);}
+ if(saveActions){
+   const anchor=$('importBtn');
+   if(anchor?.parentElement===saveActions){
+     anchor.insertAdjacentElement('afterend',shareBtn);
+     shareBtn.insertAdjacentElement('afterend',importBtn);
+   }else{
+     saveActions.append(shareBtn,importBtn);
+   }
+ }else{
+   document.body.append(shareBtn,importBtn);
+ }
 
  const input=document.createElement('input');
  input.id='sharedLessonFile';
