@@ -6,6 +6,7 @@ let pendingPhoto='';
 let selectedIds=new Set();
 let selectionReady=false;
 let applyingSelection=false;
+let pickerCollapsed=false;
 function msg(t){const a=A();if(a?.message)a.message(t);}
 function validName(v){return /^[ぁ-ゖー・ 　]+$/.test(v);}
 async function photoData(file){
@@ -16,7 +17,7 @@ async function photoData(file){
  return c.toDataURL('image/jpeg',.86);
 }
 function addStyles(){const s=document.createElement('style');s.textContent=`
-.part-icon img{width:76px!important;height:76px!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center 38%!important;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px #0003}.part-icon:has(img){height:82px}.student-picker{display:flex;gap:10px;align-items:center;overflow-x:auto;padding:10px 20px 14px;background:#fffaf0;border-bottom:1px solid #eadfbe}.student-picker-guide{flex:0 0 auto;font-size:13px;font-weight:800;color:#6b5a31;margin-right:2px}.student-choice{position:relative;flex:0 0 auto;display:grid;place-items:center;gap:3px;min-width:78px;padding:7px 9px}.student-choice.active:after{content:"✓";position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:#2f7d32;color:#fff;font-size:14px;font-weight:900;box-shadow:0 2px 5px #0003}.student-choice img{width:70px;height:70px;border-radius:50%;object-fit:cover;object-position:center 38%;border:3px solid #fff;box-shadow:0 2px 8px #0003}.student-choice.active{background:#fff0b8;border-color:#b88918}.student-choice .fallback{font-size:30px;height:54px;display:grid;place-items:center}.student-choice small{font-size:12px;color:#3c321e;font-weight:750}body.performing .student-picker{padding:8px 10px}body.performing .student-choice{min-width:112px}body.performing .student-choice img{width:92px;height:92px}body.performing .student-choice small{font-size:16px}body.performing .part-icon:has(img){height:112px!important}body.performing .part-icon img{width:104px!important;height:104px!important}body.performing .part-label strong{font-size:24px!important}.student-setup{padding:12px;background:#fffaf0;border:1px solid #e6d7ab;border-radius:10px;margin:10px 0 16px}.student-setup h3{margin:0 0 8px}.student-preview{display:flex;align-items:center;gap:10px;margin-top:8px}.student-preview img{width:84px;height:84px;border-radius:50%;object-fit:cover;object-position:center 38%}.face-tool{background:#fff8dd!important}
+.part-icon img{width:76px!important;height:76px!important;max-width:none!important;max-height:none!important;object-fit:cover!important;object-position:center 38%!important;border-radius:50%;border:3px solid #fff;box-shadow:0 3px 10px #0003}.part-icon:has(img){height:82px}.student-picker{display:flex;gap:10px;align-items:center;overflow-x:auto;padding:10px 20px 14px;background:#fffaf0;border-bottom:1px solid #eadfbe}.student-picker-guide{flex:0 0 auto;font-size:13px;font-weight:800;color:#6b5a31;margin-right:2px}.student-choice{position:relative;flex:0 0 auto;display:grid;place-items:center;gap:3px;min-width:78px;padding:7px 9px}.student-choice.active:after{content:"✓";position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:#2f7d32;color:#fff;font-size:14px;font-weight:900;box-shadow:0 2px 5px #0003}.student-choice img{width:70px;height:70px;border-radius:50%;object-fit:cover;object-position:center 38%;border:3px solid #fff;box-shadow:0 2px 8px #0003}.student-choice.active{background:#fff0b8;border-color:#b88918}.student-choice .fallback{font-size:30px;height:54px;display:grid;place-items:center}.student-choice small{font-size:12px;color:#3c321e;font-weight:750}body.performing .student-picker{padding:8px 10px}body.performing .student-choice{min-width:112px}body.performing .student-choice img{width:92px;height:92px}body.performing .student-choice small{font-size:16px}body.performing .part-icon:has(img){height:112px!important}body.performing .part-icon img{width:104px!important;height:104px!important}body.performing .part-label strong{font-size:24px!important}.student-setup{padding:12px;background:#fffaf0;border:1px solid #e6d7ab;border-radius:10px;margin:10px 0 16px}.student-setup h3{margin:0 0 8px}.student-preview{display:flex;align-items:center;gap:10px;margin-top:8px}.student-preview img{width:84px;height:84px;border-radius:50%;object-fit:cover;object-position:center 38%}.face-tool{background:#fff8dd!important}.student-picker-toggle{display:none;justify-content:flex-end;align-items:center;padding:4px 10px;background:#fffaf0;border-bottom:1px solid #eadfbe;min-height:30px}.student-picker-toggle button{min-height:30px!important;padding:3px 10px!important;font-size:12px!important;opacity:.82}body.performing .student-picker-toggle.active{display:flex}body.performing .student-picker[hidden]{display:none!important}
 `;document.head.append(s);}
 function setupDialog(){
  const form=$('partForm');if(!form||$('studentName'))return;
@@ -62,9 +63,29 @@ function applySelection(){
    rows.forEach((row,i)=>{const p=parts[i];if(!p)return;row.dataset.studentPartId=p.id;row.hidden=!selectedIds.has(p.id);});
  }finally{if(a.getViewPart()==='all')applyingSelection=false;}
 }
+function ensurePickerToggle(root){
+ let bar=$('studentPickerToggle');
+ if(!bar){
+   bar=document.createElement('div');bar.id='studentPickerToggle';bar.className='student-picker-toggle';
+   const b=document.createElement('button');b.type='button';b.id='studentPickerToggleBtn';bar.append(b);
+   root.before(bar);
+   b.onclick=()=>setPickerCollapsed(!pickerCollapsed);
+ }
+ bar.classList.toggle('active',pickerCollapsed||document.body.classList.contains('performing'));
+ const b=$('studentPickerToggleBtn');if(b)b.textContent=pickerCollapsed?'表示するパートを変更':'パート選択を閉じる';
+ return bar;
+}
+function setPickerCollapsed(value){
+ pickerCollapsed=!!value;
+ const root=$('studentPicker');if(root)root.hidden=pickerCollapsed;
+ const bar=root?ensurePickerToggle(root):$('studentPickerToggle');
+ if(bar)bar.classList.toggle('active',pickerCollapsed||document.body.classList.contains('performing'));
+ const b=$('studentPickerToggleBtn');if(b)b.textContent=pickerCollapsed?'表示するパートを変更':'パート選択を閉じる';
+}
 function renderPicker(){
  const a=A();if(!a)return;const parts=syncSelection();let root=$('studentPicker');
  if(!root){root=document.createElement('div');root.id='studentPicker';root.className='student-picker';root.setAttribute('aria-label','演奏する絵譜をえらぶ。複数選べます');$('score')?.before(root);}
+ ensurePickerToggle(root);root.hidden=pickerCollapsed;
  root.replaceChildren();
  const guide=document.createElement('span');guide.className='student-picker-guide';guide.textContent='演奏する絵譜（複数えらべます）';root.append(guide);
  const make=(part,label,all=false)=>{
@@ -93,6 +114,6 @@ function addFaceTools(){
  const b=document.createElement('button');b.className='face-tool';b.textContent='顔写真';b.onclick=()=>{const f=document.createElement('input');f.type='file';f.accept='image/png,image/jpeg,image/webp';f.onchange=async()=>{try{const d=await photoData(f.files?.[0]);if(!d)return;a.remember();part.image=d;a.edited();a.score.mount(a.getViewPart());renderPicker();setTimeout(addFaceTools,0);msg('顔写真を変更しました。');}catch(e){msg(e.message);}};f.click();};tools.insertBefore(b,tools.lastElementChild);});
 }
 function adaptExisting(){const a=A();if(!a)return;for(const p of a.getProject().parts){if(p.studentName&&!p.name)p.name=p.studentName;}const pitch=$('notePitch')?.closest('label');if(pitch)pitch.hidden=true;syncSelection();renderPicker();applySelection();addFaceTools();}
-function init(){if(!A())return setTimeout(init,30);addStyles();setupDialog();adaptExisting();const mo=new MutationObserver(()=>{applySelection();renderPicker();addFaceTools();});mo.observe($('score'),{childList:true,subtree:true});$('performBtn')?.addEventListener('click',()=>setTimeout(()=>{renderPicker();addFaceTools();},20));$('exitPerformBtn')?.addEventListener('click',()=>setTimeout(()=>{renderPicker();addFaceTools();},20));window.addEventListener('score-project-loaded',()=>{selectedIds.clear();selectionReady=false;setTimeout(()=>{syncSelection();renderPicker();applySelection();addFaceTools();},0);});}
+function init(){if(!A())return setTimeout(init,30);addStyles();setupDialog();adaptExisting();const mo=new MutationObserver(()=>{applySelection();renderPicker();addFaceTools();});mo.observe($('score'),{childList:true,subtree:true});$('performBtn')?.addEventListener('click',()=>setTimeout(()=>{renderPicker();addFaceTools();},20));$('exitPerformBtn')?.addEventListener('click',()=>{pickerCollapsed=false;setTimeout(()=>{renderPicker();setPickerCollapsed(false);addFaceTools();},20);});window.addEventListener('score-project-loaded',()=>{selectedIds.clear();selectionReady=false;pickerCollapsed=false;setTimeout(()=>{syncSelection();renderPicker();applySelection();addFaceTools();},0);});window.addEventListener('score-performance-ready',()=>{setTimeout(()=>setPickerCollapsed(true),40);});}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
