@@ -134,8 +134,8 @@ function guestData(data){if(!data||typeof data!=='object')return;
  if(data.type==='reset'){stopCorrection();stopVisual();if(A()?.syncIsVisualOnly?.())A()?.syncSetVisualTime?.(0);else A()?.syncSeek?.(0);}
 }
 async function unlockMedia(){const a=A();if(!a?.hasMedia?.())throw Error('教材の受信がまだ終わっていません。');await a.syncUnlock();}
-async function prepareGuest(){try{if(!A()?.getProject?.()?.parts?.length)throw Error('絵譜の受信がまだ終わっていません。');guestReady=true;guestConn?.send({type:'ready',ready:true});$('guestStatus').textContent='✓ 準備OKです。先生のスタートを待ちます。';$('guestPrepare').textContent='✓ 準備OK';A()?.enterPerformance?.();$('syncModal').close();}catch(e){msg(e.message);}}
-async function prepareHost(){try{await unlockMedia();teacherPrepared=true;$('hostPrepare').textContent='✓ この端末も準備OK';}catch(e){msg(e.message);}}
+async function prepareGuest(){try{if(!A()?.getProject?.()?.parts?.length)throw Error('絵譜の受信がまだ終わっていません。');guestReady=true;guestConn?.send({type:'ready',ready:true});$('guestStatus').textContent='✓ 準備OKです。先生のスタートを待ちます。';$('guestPrepare').textContent='✓ 準備OK';A()?.enterPerformance?.();window.dispatchEvent(new Event('score-performance-ready'));$('syncModal').close();}catch(e){msg(e.message);}}
+async function prepareHost(){try{await unlockMedia();teacherPrepared=true;$('hostPrepare').textContent='✓ この端末も準備OK';A()?.enterPerformance?.();window.dispatchEvent(new Event('score-performance-ready'));}catch(e){msg(e.message);}}
 function expectedPosition(){
  const a=A(),rate=a?.getSyncRate?.()||1,teacherNow=Date.now()+(mode==='guest'?clockOffset:0);
  return activeStartPosition+Math.max(0,teacherNow-activeStartAt)/1000*rate;
