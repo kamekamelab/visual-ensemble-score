@@ -4,7 +4,7 @@ const A=()=>window.__scoreApp;
 const $=id=>document.getElementById(id);
 const LIB='https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js';
 let peer=null,mode='',room='',hostConns=new Map(),guestConn=null,guestReady=false,clockOffset=0,pingSamples=[],clientSeq=0;
-let teacherPrepared=false;
+let teacherPrepared=false,clockTimer=0,correctionTimer=0,activeStartAt=0,activeStartPosition=0;
 
 function msg(t){const a=A();if(a?.message)a.message(t);}
 function randRoom(){return String(Math.floor(1000+Math.random()*9000));}
@@ -23,7 +23,7 @@ function makeUI(){if($('syncModal'))return;
  const area=$('performanceArea');const heading=area?.querySelector('.workspace-heading .actions');if(heading)heading.prepend(open);else document.body.append(open);
  const d=document.createElement('dialog');d.id='syncModal';d.className='sync-modal';d.innerHTML=`
  <div class="dialog-head"><h2>📡 みんなで演奏</h2><button id="syncClose">閉じる</button></div>
- <p class="sync-note">先生の端末でルームを作り、ほかの端末は4けたの番号で参加します。各端末で同じ教材を読み込んでから使ってください。</p>
+ <p class="sync-note">先生の端末でルームを作り、ほかの端末は4けたの番号で参加します。端末ごとの時計差を測り、開始後も自動でズレを補正します。各端末で同じ教材を読み込んでから使ってください。</p>
  <div id="syncHome" class="sync-choice"><button id="makeRoom" class="primary">先生<br><small>ルームを作る</small></button><button id="joinMode">子ども用端末<br><small>ルームに参加</small></button></div>
  <div id="hostPanel" class="sync-box sync-hidden"><div class="sync-status">ルーム番号</div><div id="hostCode" class="room-code">----</div><div id="hostStatus">接続を待っています。</div><div id="deviceList" class="device-list"></div><div class="sync-actions"><button id="hostPrepare">この端末も準備OK</button><button id="hostStart" class="sync-start">▶ いっせいスタート</button><button id="hostPause">Ⅱ 一時停止</button><button id="hostReset">↺ 最初へ</button></div></div>
  <div id="guestPanel" class="sync-box sync-hidden"><label>ルーム番号<input id="roomInput" class="sync-room-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="0000"></label><div class="sync-actions"><button id="joinRoom" class="primary">参加する</button><button id="guestPrepare" disabled>この端末を準備OK</button></div><p id="guestStatus" class="sync-status">ルーム番号を入れてください。</p></div>`;
@@ -33,7 +33,8 @@ function makeUI(){if($('syncModal'))return;
 }
 function setPanels(which){$('syncHome').classList.toggle('sync-hidden',!!which);$('hostPanel').classList.toggle('sync-hidden',which!=='host');$('guestPanel').classList.toggle('sync-hidden',which!=='guest');}
 function setBadge(text){const b=$('syncBadge');if(!b)return;b.textContent=text;b.hidden=!text;}
-function destroyPeer(){try{peer?.destroy();}catch{}peer=null;hostConns.clear();guestConn=null;guestReady=false;teacherPrepared=false;clockOffset=0;pingSamples=[];}
+function stopCorrection(){clearInterval(correctionTimer);correctionTimer=0;activeStartAt=0;A()?.syncRestoreRate?.();}
+function destroyPeer(){clearInterval(clockTimer);clockTimer=0;stopCorrection();try{peer?.destroy();}catch{}peer=null;hostConns.clear();guestConn=null;guestReady=false;teacherPrepared=false;clockOffset=0;pingSamples=[];}
 function peerErrorText(err){const t=err?.type||'';if(t==='peer-unavailable')return 'そのルームが見つかりません。番号を確認してください。';if(t==='network'||t==='server-error'||t==='socket-error')return '通信サーバーにつながりません。学校のWi-Fi設定を確認してください。';return '接続できませんでした。もう一度お試しください。';}
 async function startHost(retry=0){
  try{await loadPeer();destroyPeer();mode='host';room=randRoom();setPanels('host');$('hostCode').textContent=room;$('hostStatus').textContent='ルームを作っています…';renderDevices();peer=new Peer(peerId(room));
@@ -63,25 +64,46 @@ async function joinRoom(){
  peer.on('error',err=>{$('guestStatus').textContent=peerErrorText(err);});
  }catch(e){$('guestStatus').textContent=e.message;}
 }
-function guestDisconnected(){$('guestStatus').textContent='接続が切れました。もう一度参加してください。';$('guestPrepare').disabled=true;setBadge('');guestReady=false;}
-function startClockSync(){pingSamples=[];let n=0;const send=()=>{if(!guestConn?.open||n>=6)return;guestConn.send({type:'ping',t0:Date.now()});n++;setTimeout(send,180);};send();}
+function guestDisconnected(){clearInterval(clockTimer);clockTimer=0;stopCorrection();$('guestStatus').textContent='接続が切れました。もう一度参加してください。';$('guestPrepare').disabled=true;setBadge('');guestReady=false;}
+function sendPing(){if(guestConn?.open)guestConn.send({type:'ping',t0:Date.now()});}
+function startClockSync(){
+ pingSamples=[];clearInterval(clockTimer);clockTimer=0;
+ let n=0;const burst=()=>{if(!guestConn?.open||n>=8)return;sendPing();n++;setTimeout(burst,140);};burst();
+ clockTimer=setInterval(sendPing,3000);
+}
 function guestData(data){if(!data||typeof data!=='object')return;
- if(data.type==='pong'){const t3=Date.now(),rtt=t3-data.t0,offset=((data.t1-data.t0)+(data.t2-t3))/2;pingSamples.push({rtt,offset});pingSamples.sort((a,b)=>a.rtt-b.rtt);const best=pingSamples.slice(0,3);clockOffset=best.reduce((s,x)=>s+x.offset,0)/best.length;}
+ if(data.type==='pong'){const t3=Date.now(),rtt=t3-data.t0,offset=((data.t1-data.t0)+(data.t2-t3))/2;pingSamples.push({rtt,offset});if(pingSamples.length>18)pingSamples.shift();const best=[...pingSamples].sort((a,b)=>a.rtt-b.rtt).slice(0,5);clockOffset=best.reduce((sum,x)=>sum+x.offset,0)/best.length;}
  if(data.type==='start')scheduleRemoteStart(data.at,data.position||0);
- if(data.type==='pause')A()?.syncPause?.();
- if(data.type==='reset')A()?.syncSeek?.(0);
+ if(data.type==='pause'){stopCorrection();A()?.syncPause?.();}
+ if(data.type==='reset'){stopCorrection();A()?.syncSeek?.(0);}
 }
 async function unlockMedia(){const a=A();if(!a?.hasMedia?.())throw Error('先に、この端末にも同じ教材・音源を読み込んでください。');await a.syncUnlock();}
 async function prepareGuest(){try{await unlockMedia();guestReady=true;guestConn?.send({type:'ready',ready:true});$('guestStatus').textContent='✓ 準備OKです。先生のスタートを待ちます。';$('guestPrepare').textContent='✓ 準備OK';A()?.enterPerformance?.();$('syncModal').close();}catch(e){msg(e.message);}}
 async function prepareHost(){try{await unlockMedia();teacherPrepared=true;$('hostPrepare').textContent='✓ この端末も準備OK';}catch(e){msg(e.message);}}
-function scheduleRemoteStart(teacherAt,position){const localAt=teacherAt-clockOffset,delay=Math.max(0,localAt-Date.now());A()?.syncScheduleStart?.(delay,position);}
+function expectedPosition(){
+ const a=A(),rate=a?.getSyncRate?.()||1,teacherNow=Date.now()+(mode==='guest'?clockOffset:0);
+ return activeStartPosition+Math.max(0,teacherNow-activeStartAt)/1000*rate;
+}
+function startCorrection(teacherAt,position){
+ stopCorrection();activeStartAt=Number(teacherAt)||0;activeStartPosition=Number(position)||0;
+ const run=()=>{if(!activeStartAt)return;const expected=expectedPosition();A()?.syncCorrect?.(expected);};
+ setTimeout(run,180);correctionTimer=setInterval(run,350);
+}
+function scheduleRemoteStart(teacherAt,position){
+ const localAt=teacherAt-clockOffset,delay=Math.max(0,localAt-Date.now());
+ A()?.syncScheduleStart?.(delay,position);
+ setTimeout(()=>startCorrection(teacherAt,position),delay+120);
+}
 async function hostCommand(type){
  if(type==='start'){
   const notReady=[...hostConns.values()].filter(x=>!x.ready).length;if(notReady&&!confirm(`準備OKでない端末が${notReady}台あります。スタートしますか？`))return;
-  const at=Date.now()+1800,position=0;for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'start',at,position});if(teacherPrepared)A()?.syncScheduleStart?.(1800,position);$('hostStatus').textContent='1.8秒後にいっせいスタートします。';return;
+  const delay=3000,at=Date.now()+delay,position=0;
+  for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'start',at,position});
+  if(teacherPrepared){A()?.syncScheduleStart?.(delay,position);setTimeout(()=>startCorrection(at,position),delay+120);}
+  $('hostStatus').textContent='3秒後にいっせいスタートします。開始後も自動でズレを補正します。';return;
  }
- if(type==='pause'){for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'pause'});if(teacherPrepared)A()?.syncPause?.();return;}
- if(type==='reset'){for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'reset'});if(teacherPrepared)A()?.syncSeek?.(0);return;}
+ if(type==='pause'){for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'pause'});stopCorrection();if(teacherPrepared)A()?.syncPause?.();return;}
+ if(type==='reset'){for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'reset'});stopCorrection();if(teacherPrepared)A()?.syncSeek?.(0);return;}
 }
 function init(){if(!A())return setTimeout(init,40);addStyles();makeUI();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
