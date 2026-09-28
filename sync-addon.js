@@ -16,7 +16,7 @@ function loadPeer(){return new Promise((resolve,reject)=>{
  const s=document.createElement('script');s.src=LIB;s.async=true;s.dataset.peerjs='1';s.onload=()=>window.Peer?resolve(window.Peer):reject(Error('通信機能を読み込めませんでした。'));s.onerror=()=>reject(Error('通信機能を読み込めませんでした。'));document.head.append(s);
  });}
 function addStyles(){const s=document.createElement('style');s.textContent=`
-.sync-open{background:#eef7ff!important;border-color:#75a8d8!important}.sync-modal{width:min(650px,calc(100% - 24px));}.sync-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sync-choice button{min-height:76px;font-size:17px}.sync-box{padding:14px;border:1px solid #dfd4b9;border-radius:12px;background:#fffaf0;margin-top:12px}.room-code{font-size:38px;font-weight:900;letter-spacing:.18em;text-align:center;margin:8px 0}.sync-status{font-weight:750}.device-list{display:grid;gap:7px;margin:10px 0}.device-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;background:#fff;border:1px solid #e4d9bc;border-radius:9px}.ready{color:#257334;font-weight:900}.not-ready{color:#9a6a15}.sync-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.sync-actions button{min-height:50px}.sync-start{background:#6bbf72!important;border-color:#4d9b54!important}.sync-badge{position:fixed;right:10px;bottom:10px;z-index:250;background:#24343d;color:#fff;border-radius:999px;padding:7px 11px;font-size:12px;box-shadow:0 3px 12px #0003}.sync-room-input{font-size:28px!important;font-weight:900;text-align:center;letter-spacing:.18em}.sync-note{font-size:12px;color:#736743;line-height:1.6}.sync-hidden{display:none!important}@media(max-width:650px){.sync-choice{grid-template-columns:1fr}.room-code{font-size:32px}.sync-modal{padding:16px}.sync-actions button{flex:1 1 42%}}
+.sync-open{background:#eef7ff!important;border-color:#75a8d8!important}.sync-modal{width:min(650px,calc(100% - 24px));}.sync-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sync-choice button{min-height:76px;font-size:17px}.sync-box{padding:14px;border:1px solid #dfd4b9;border-radius:12px;background:#fffaf0;margin-top:12px}.room-code{font-size:38px;font-weight:900;letter-spacing:.18em;text-align:center;margin:8px 0}.sync-status{font-weight:750}.device-list{display:grid;gap:7px;margin:10px 0}.device-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;background:#fff;border:1px solid #e4d9bc;border-radius:9px}.ready{color:#257334;font-weight:900}.not-ready{color:#9a6a15}.sync-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.sync-actions button{min-height:50px}.sync-start{background:#6bbf72!important;border-color:#4d9b54!important}.sync-end{background:#fff1f1!important;border-color:#c96d6d!important;color:#8b2f2f!important;font-weight:800}.sync-badge{position:fixed;right:10px;bottom:10px;z-index:250;background:#24343d;color:#fff;border-radius:999px;padding:7px 11px;font-size:12px;box-shadow:0 3px 12px #0003}.sync-room-input{font-size:28px!important;font-weight:900;text-align:center;letter-spacing:.18em}.sync-note{font-size:12px;color:#736743;line-height:1.6}.sync-hidden{display:none!important}@media(max-width:650px){.sync-choice{grid-template-columns:1fr}.room-code{font-size:32px}.sync-modal{padding:16px}.sync-actions button{flex:1 1 42%}}
 `;document.head.append(s);}
 function makeUI(){if($('syncModal'))return;
  const open=document.createElement('button');open.id='syncOpenBtn';open.className='sync-open';open.textContent='📡 みんなで演奏';
@@ -25,11 +25,11 @@ function makeUI(){if($('syncModal'))return;
  <div class="dialog-head"><h2>📡 みんなで演奏</h2><button id="syncClose">閉じる</button></div>
  <p class="sync-note">先生の端末でルームを作り、ほかの端末は4けたの番号で参加します。子機には絵譜・顔写真・設定だけを送り、音源は先生の端末だけで再生します。iPadは軽量な絵譜表示専用です。</p>
  <div id="syncHome" class="sync-choice"><button id="makeRoom" class="primary">先生<br><small>ルームを作る</small></button><button id="joinMode">子ども用端末<br><small>ルームに参加</small></button></div>
- <div id="hostPanel" class="sync-box sync-hidden"><div class="sync-status">ルーム番号</div><div id="hostCode" class="room-code">----</div><div id="hostStatus">接続を待っています。</div><div id="deviceList" class="device-list"></div><div class="sync-actions"><button id="sendBundle">絵譜をもう一度送る</button><button id="hostPrepare">この端末も準備OK</button><button id="hostStart" class="sync-start">▶ 8拍カウント → スタート</button><button id="hostPause">Ⅱ 一時停止</button><button id="hostReset">↺ 最初へ</button></div></div>
+ <div id="hostPanel" class="sync-box sync-hidden"><div class="sync-status">ルーム番号</div><div id="hostCode" class="room-code">----</div><div id="hostStatus">接続を待っています。</div><div id="deviceList" class="device-list"></div><div class="sync-actions"><button id="sendBundle">絵譜をもう一度送る</button><button id="hostPrepare">この端末も準備OK</button><button id="hostStart" class="sync-start">▶ 8拍カウント → スタート</button><button id="hostPause">Ⅱ 一時停止</button><button id="hostReset">↺ 最初へ</button><button id="hostEndRoom" class="sync-end">ルームを解散</button></div></div>
  <div id="guestPanel" class="sync-box sync-hidden"><label>ルーム番号<input id="roomInput" class="sync-room-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="0000"></label><div class="sync-actions"><button id="joinRoom" class="primary">参加する</button><button id="guestPrepare" disabled>この端末を準備OK</button></div><p id="guestStatus" class="sync-status">ルーム番号を入れてください。</p></div>`;
  document.body.append(d);
  const badge=document.createElement('button');badge.id='syncBadge';badge.className='sync-badge';badge.hidden=true;badge.onclick=()=>d.showModal();document.body.append(badge);
- open.onclick=()=>d.showModal();$('syncClose').onclick=()=>d.close();$('makeRoom').onclick=()=>startHost();$('joinMode').onclick=()=>showGuest();$('joinRoom').onclick=()=>joinRoom();$('guestPrepare').onclick=()=>prepareGuest();$('sendBundle').onclick=()=>sendBundleToAll();$('hostPrepare').onclick=()=>prepareHost();$('hostStart').onclick=()=>hostCommand('start');$('hostPause').onclick=()=>hostCommand('pause');$('hostReset').onclick=()=>hostCommand('reset');
+ open.onclick=()=>d.showModal();$('syncClose').onclick=()=>d.close();$('makeRoom').onclick=()=>startHost();$('joinMode').onclick=()=>showGuest();$('joinRoom').onclick=()=>joinRoom();$('guestPrepare').onclick=()=>prepareGuest();$('sendBundle').onclick=()=>sendBundleToAll();$('hostPrepare').onclick=()=>prepareHost();$('hostStart').onclick=()=>hostCommand('start');$('hostPause').onclick=()=>hostCommand('pause');$('hostReset').onclick=()=>hostCommand('reset');$('hostEndRoom').onclick=()=>endHostRoom();
 }
 function setPanels(which){$('syncHome').classList.toggle('sync-hidden',!!which);$('hostPanel').classList.toggle('sync-hidden',which!=='host');$('guestPanel').classList.toggle('sync-hidden',which!=='guest');}
 function setBadge(text){const b=$('syncBadge');if(!b)return;b.textContent=text;b.hidden=!text;}
@@ -64,6 +64,23 @@ async function playCountIn(firstTapDelayMs,beatMs,count=8){
  for(let i=0;i<count;i++)countTimers.push(setTimeout(()=>{$('hostStatus').textContent=`カウント ${i+1} / ${count}　タン`;},firstTapDelayMs+i*beatMs));
 }
 function destroyPeer(){clearInterval(clockTimer);clockTimer=0;stopCorrection();stopVisual();clearCountIn();try{peer?.destroy();}catch{}peer=null;hostConns.clear();guestConn=null;guestReady=false;teacherPrepared=false;clockOffset=0;pingSamples=[];incomingBundle=null;sendingBundle=false;}
+function endHostRoom(){
+ if(mode!=='host')return;
+ if(!confirm('このルームを解散しますか？\n参加中の端末との接続が切れます。'))return;
+ for(const {conn} of hostConns.values()){
+   try{if(conn.open)conn.send({type:'room-closed'});}catch{}
+ }
+ setTimeout(()=>{
+   destroyPeer();
+   mode='';room='';
+   setBadge('');
+   setPanels('');
+   $('hostCode').textContent='----';
+   $('hostStatus').textContent='ルームを解散しました。';
+   $('hostPrepare').textContent='この端末も準備OK';
+   msg('ルームを解散しました。');
+ },120);
+}
 function peerErrorText(err){const t=err?.type||'';if(t==='peer-unavailable')return 'そのルームが見つかりません。番号を確認してください。';if(t==='network'||t==='server-error'||t==='socket-error')return '通信サーバーにつながりません。学校のWi-Fi設定を確認してください。';return '接続できませんでした。もう一度お試しください。';}
 async function startHost(retry=0){
  try{await loadPeer();destroyPeer();mode='host';room=randRoom();setPanels('host');$('hostCode').textContent=room;$('hostStatus').textContent='ルームを作っています…';renderDevices();peer=new Peer(peerId(room));
@@ -135,6 +152,15 @@ async function finishIncomingBundle(){
  }catch(e){incomingBundle=null;$('guestStatus').textContent='絵譜を開けませんでした。先生側からもう一度送ってください。';msg(e.message);}
 }
 function guestData(data){if(!data||typeof data!=='object')return;
+ if(data.type==='room-closed'){
+   clearInterval(clockTimer);clockTimer=0;stopCorrection();stopVisual();clearCountIn();
+   try{guestConn?.close();}catch{}
+   guestConn=null;guestReady=false;room='';setBadge('');
+   $('guestPrepare').disabled=true;$('guestPrepare').textContent='この端末を準備OK';
+   $('guestStatus').textContent='先生がルームを解散しました。';
+   msg('先生がルームを解散しました。');
+   return;
+ }
  if(data.type==='bundle-meta'){incomingBundle={id:data.id,size:Number(data.size)||0,total:Number(data.total)||0,received:0,chunks:new Array(Number(data.total)||0)};$('guestPrepare').disabled=true;$('guestStatus').textContent=`絵譜を受信中… 0%`;return;}
  if(data.type==='bundle-chunk'&&incomingBundle&&data.id===incomingBundle.id){if(!incomingBundle.chunks[data.index]){incomingBundle.chunks[data.index]=data.data;incomingBundle.received++;}$('guestStatus').textContent=`絵譜を受信中… ${Math.round(incomingBundle.received/incomingBundle.total*100)}%`;return;}
  if(data.type==='bundle-end'&&incomingBundle&&data.id===incomingBundle.id){finishIncomingBundle();return;}
