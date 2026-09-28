@@ -4,7 +4,7 @@ const A=()=>window.__scoreApp;
 const $=id=>document.getElementById(id);
 const LIB='https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js';
 let peer=null,mode='',room='',hostConns=new Map(),guestConn=null,guestReady=false,clockOffset=0,pingSamples=[],clientSeq=0;
-let teacherPrepared=false,clockTimer=0,correctionTimer=0,activeStartAt=0,activeStartPosition=0,incomingBundle=null,sendingBundle=false,visualRaf=0,visualStartAt=0,visualStartPosition=0,visualLastFrame=0,countCtx=null,countTimers=[];
+let teacherPrepared=false,clockTimer=0,correctionTimer=0,activeStartAt=0,activeStartPosition=0,incomingBundle=null,sendingBundle=false,visualRaf=0,visualStartAt=0,visualStartPosition=0,visualLastFrame=0,countCtx=null,countTimers=[],guestClosedReason='';
 
 function msg(t){const a=A();if(a?.message)a.message(t);}
 function randRoom(){return String(Math.floor(1000+Math.random()*9000));}
@@ -16,7 +16,7 @@ function loadPeer(){return new Promise((resolve,reject)=>{
  const s=document.createElement('script');s.src=LIB;s.async=true;s.dataset.peerjs='1';s.onload=()=>window.Peer?resolve(window.Peer):reject(Error('通信機能を読み込めませんでした。'));s.onerror=()=>reject(Error('通信機能を読み込めませんでした。'));document.head.append(s);
  });}
 function addStyles(){const s=document.createElement('style');s.textContent=`
-.sync-open{background:#eef7ff!important;border-color:#75a8d8!important}.sync-modal{width:min(650px,calc(100% - 24px));}.sync-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sync-choice button{min-height:76px;font-size:17px}.sync-box{padding:14px;border:1px solid #dfd4b9;border-radius:12px;background:#fffaf0;margin-top:12px}.room-code{font-size:38px;font-weight:900;letter-spacing:.18em;text-align:center;margin:8px 0}.sync-status{font-weight:750}.device-list{display:grid;gap:7px;margin:10px 0}.device-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;background:#fff;border:1px solid #e4d9bc;border-radius:9px}.ready{color:#257334;font-weight:900}.not-ready{color:#9a6a15}.sync-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.sync-actions button{min-height:50px}.sync-start{background:#6bbf72!important;border-color:#4d9b54!important}.sync-end{background:#fff1f1!important;border-color:#c96d6d!important;color:#8b2f2f!important;font-weight:800}.sync-badge{position:fixed;right:10px;bottom:10px;z-index:250;background:#24343d;color:#fff;border-radius:999px;padding:7px 11px;font-size:12px;box-shadow:0 3px 12px #0003}.sync-room-input{font-size:28px!important;font-weight:900;text-align:center;letter-spacing:.18em}.sync-note{font-size:12px;color:#736743;line-height:1.6}.sync-hidden{display:none!important}@media(max-width:650px){.sync-choice{grid-template-columns:1fr}.room-code{font-size:32px}.sync-modal{padding:16px}.sync-actions button{flex:1 1 42%}}
+.sync-open{background:#eef7ff!important;border-color:#75a8d8!important}.sync-modal{width:min(650px,calc(100% - 24px));}.sync-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}.sync-choice button{min-height:76px;font-size:17px}.sync-box{padding:14px;border:1px solid #dfd4b9;border-radius:12px;background:#fffaf0;margin-top:12px}.room-code{font-size:38px;font-weight:900;letter-spacing:.18em;text-align:center;margin:8px 0}.sync-status{font-weight:750}.device-list{display:grid;gap:7px;margin:10px 0}.device-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 11px;background:#fff;border:1px solid #e4d9bc;border-radius:9px}.device-approval{align-items:flex-start;background:#fff8e8;border-color:#d9ae53}.approval-copy{display:grid;gap:3px}.approval-actions{display:flex;gap:6px;flex-wrap:wrap}.approval-actions button{min-height:38px!important;padding:6px 10px!important}.approve-yes{background:#e8f6eb!important;border-color:#62a36c!important;font-weight:800}.approve-no{background:#fff1f1!important;border-color:#c96d6d!important;color:#8b2f2f!important}.ready{color:#257334;font-weight:900}.not-ready{color:#9a6a15}.sync-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.sync-actions button{min-height:50px}.sync-start{background:#6bbf72!important;border-color:#4d9b54!important}.sync-end{background:#fff1f1!important;border-color:#c96d6d!important;color:#8b2f2f!important;font-weight:800}.sync-badge{position:fixed;right:10px;bottom:10px;z-index:250;background:#24343d;color:#fff;border-radius:999px;padding:7px 11px;font-size:12px;box-shadow:0 3px 12px #0003}.sync-room-input{font-size:28px!important;font-weight:900;text-align:center;letter-spacing:.18em}.sync-note{font-size:12px;color:#736743;line-height:1.6}.sync-hidden{display:none!important}@media(max-width:650px){.sync-choice{grid-template-columns:1fr}.room-code{font-size:32px}.sync-modal{padding:16px}.sync-actions button{flex:1 1 42%}}
 `;document.head.append(s);}
 function makeUI(){if($('syncModal'))return;
  const open=document.createElement('button');open.id='syncOpenBtn';open.className='sync-open';open.textContent='📡 みんなで演奏';
@@ -89,11 +89,22 @@ async function startHost(retry=0){
  peer.on('error',err=>{if(err.type==='unavailable-id'&&retry<4){startHost(retry+1);return;}$('hostStatus').textContent=peerErrorText(err);});
  }catch(e){$('hostStatus').textContent=e.message;}
 }
+function approveGuest(info){
+ if(!info?.conn?.open||info.approved)return;
+ info.approved=true;info.ready=false;info.bundle=false;
+ try{info.conn.send({type:'approved',room,teacherNow:Date.now()});}catch{}
+ renderDevices();
+}
+function denyGuest(info){
+ if(!info)return;
+ try{if(info.conn?.open)info.conn.send({type:'denied'});}catch{}
+ setTimeout(()=>{try{info.conn?.close();}catch{}hostConns.delete(info.conn?.peer);renderDevices();},120);
+}
 function acceptGuest(conn){
- const info={conn,ready:false,bundle:false,label:'端末 '+(++clientSeq)};hostConns.set(conn.peer,info);
- conn.on('open',()=>{conn.send({type:'hello',room,teacherNow:Date.now()});renderDevices();});
+ const info={conn,ready:false,bundle:false,approved:false,label:'端末 '+(++clientSeq)};hostConns.set(conn.peer,info);
+ conn.on('open',()=>{try{conn.send({type:'approval-pending'});}catch{};renderDevices();});
  conn.on('data',data=>{
-  if(!data||typeof data!=='object')return;
+  if(!data||typeof data!=='object'||!info.approved)return;
   if(data.type==='ready'){info.ready=!!data.ready;renderDevices();}
   if(data.type==='bundle-received'){info.bundle=true;renderDevices();}
   if(data.type==='request-bundle')sendBundleTo(info).catch(e=>{try{conn.send({type:'bundle-error',message:e.message});}catch{};});
@@ -103,16 +114,43 @@ function acceptGuest(conn){
  conn.on('error',()=>{hostConns.delete(conn.peer);renderDevices();});
  renderDevices();
 }
-function renderDevices(){const root=$('deviceList');if(!root)return;root.replaceChildren();const items=[...hostConns.values()];if(!items.length){const p=document.createElement('div');p.className='sync-note';p.textContent='まだ参加している端末はありません。';root.append(p);return;}items.forEach((x,i)=>{const r=document.createElement('div');r.className='device-row';const material=x.bundle?'絵譜✓':'絵譜待ち',ready=x.ready?'✓ 準備OK':'準備待ち';r.innerHTML=`<b>端末 ${i+1}</b><span class="${x.ready?'ready':'not-ready'}">${material}・${ready}</span>`;root.append(r);});$('hostStatus').textContent=`${items.length}台 接続中／${items.filter(x=>x.bundle).length}台 絵譜受信／${items.filter(x=>x.ready).length}台 準備OK`;}
+function renderDevices(){
+ const root=$('deviceList');if(!root)return;root.replaceChildren();
+ const items=[...hostConns.values()];
+ if(!items.length){const p=document.createElement('div');p.className='sync-note';p.textContent='まだ参加している端末はありません。';root.append(p);return;}
+ items.forEach((x,i)=>{
+  const r=document.createElement('div');
+  if(!x.approved){
+   r.className='device-row device-approval';
+   const copy=document.createElement('div');copy.className='approval-copy';
+   const q=document.createElement('b');q.textContent='この端末を許可しますか？';
+   const sub=document.createElement('span');sub.className='sync-note';sub.textContent='端末 '+(i+1)+' が参加を希望しています。';
+   copy.append(q,sub);
+   const actions=document.createElement('div');actions.className='approval-actions';
+   const yes=document.createElement('button');yes.type='button';yes.className='approve-yes';yes.textContent='許可する';yes.onclick=()=>approveGuest(x);
+   const no=document.createElement('button');no.type='button';no.className='approve-no';no.textContent='許可しない';no.onclick=()=>denyGuest(x);
+   actions.append(yes,no);r.append(copy,actions);
+  }else{
+   r.className='device-row';
+   const b=document.createElement('b');b.textContent='端末 '+(i+1);
+   const st=document.createElement('span');st.className=x.ready?'ready':'not-ready';
+   st.textContent=(x.bundle?'絵譜✓':'絵譜待ち')+'・'+(x.ready?'✓ 準備OK':'準備待ち');
+   r.append(b,st);
+  }
+  root.append(r);
+ });
+ const approved=items.filter(x=>x.approved),pending=items.length-approved.length;
+ $('hostStatus').textContent=approved.length+'台 許可済み／'+approved.filter(x=>x.bundle).length+'台 絵譜受信／'+approved.filter(x=>x.ready).length+'台 準備OK'+(pending?'／'+pending+'台 承認待ち':'');
+}
 function showGuest(){destroyPeer();mode='guest';setPanels('guest');$('guestStatus').textContent='ルーム番号を入れてください。';$('guestPrepare').disabled=true;setBadge('');}
 async function joinRoom(){
  const code=String($('roomInput').value||'').replace(/\D/g,'').slice(0,4);$('roomInput').value=code;if(code.length!==4)return msg('4けたのルーム番号を入れてください。');
  try{await loadPeer();destroyPeer();mode='guest';room=code;$('guestStatus').textContent='接続しています…';peer=new Peer();
- peer.on('open',()=>{const conn=peer.connect(peerId(code),{serialization:'binary',reliable:true});guestConn=conn;conn.on('open',()=>{setBadge('📡 参加中 '+code);$('guestStatus').textContent='接続しました。先生の絵譜を受信しています…';$('guestPrepare').disabled=true;startClockSync();conn.send({type:'request-bundle'});});conn.on('data',guestData);conn.on('close',()=>guestDisconnected());conn.on('error',()=>guestDisconnected());});
+ peer.on('open',()=>{const conn=peer.connect(peerId(code),{serialization:'binary',reliable:true});guestConn=conn;guestClosedReason='';conn.on('open',()=>{setBadge('📡 承認待ち '+code);$('guestStatus').textContent='先生の許可を待っています…';$('guestPrepare').disabled=true;});conn.on('data',guestData);conn.on('close',()=>guestDisconnected());conn.on('error',()=>guestDisconnected());});
  peer.on('error',err=>{$('guestStatus').textContent=peerErrorText(err);});
  }catch(e){$('guestStatus').textContent=e.message;}
 }
-function guestDisconnected(){clearInterval(clockTimer);clockTimer=0;stopCorrection();$('guestStatus').textContent='接続が切れました。もう一度参加してください。';$('guestPrepare').disabled=true;setBadge('');guestReady=false;}
+function guestDisconnected(){clearInterval(clockTimer);clockTimer=0;stopCorrection();$('guestStatus').textContent=guestClosedReason||'接続が切れました。もう一度参加してください。';guestClosedReason='';$('guestPrepare').disabled=true;setBadge('');guestReady=false;}
 function sendPing(){if(guestConn?.open)guestConn.send({type:'ping',t0:Date.now()});}
 function startClockSync(){
  pingSamples=[];clearInterval(clockTimer);clockTimer=0;
@@ -122,6 +160,7 @@ function startClockSync(){
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 async function sendBundleTo(info){
  if(!info?.conn?.open)return;
+ if(!info.approved)throw Error('許可されていない端末には絵譜を送れません。');
  const a=A();if(!a?.syncExportVisualBundle)throw Error('絵譜送信機能を準備できませんでした。');
  const blob=await a.syncExportVisualBundle(),buffer=await blob.arrayBuffer(),chunkSize=32*1024,total=Math.ceil(buffer.byteLength/chunkSize),id='b'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
  info.bundle=false;info.ready=false;renderDevices();
@@ -135,7 +174,7 @@ async function sendBundleTo(info){
  info.conn.send({type:'bundle-end',id});
 }
 async function sendBundleToAll(){
- if(sendingBundle)return;const items=[...hostConns.values()];if(!items.length)return msg('参加している端末がありません。');
+ if(sendingBundle)return;const items=[...hostConns.values()].filter(x=>x.approved);if(!items.length)return msg('許可済みの端末がありません。');
  sendingBundle=true;$('sendBundle').disabled=true;
  try{for(const info of items)await sendBundleTo(info);$('hostStatus').textContent='絵譜を送信しました。';}
  catch(e){msg(e.message);}
@@ -152,7 +191,25 @@ async function finishIncomingBundle(){
  }catch(e){incomingBundle=null;$('guestStatus').textContent='絵譜を開けませんでした。先生側からもう一度送ってください。';msg(e.message);}
 }
 function guestData(data){if(!data||typeof data!=='object')return;
+ if(data.type==='approval-pending'){
+   $('guestStatus').textContent='先生の許可を待っています…';
+   return;
+ }
+ if(data.type==='approved'){
+   setBadge('📡 参加中 '+room);
+   $('guestStatus').textContent='許可されました。先生の絵譜を受信しています…';
+   startClockSync();
+   guestConn?.send({type:'request-bundle'});
+   return;
+ }
+ if(data.type==='denied'){
+   guestClosedReason='先生がこの端末の参加を許可しませんでした。';
+   $('guestStatus').textContent=guestClosedReason;setBadge('');
+   try{guestConn?.close();}catch{}
+   return;
+ }
  if(data.type==='room-closed'){
+   guestClosedReason='先生がルームを解散しました。';
    clearInterval(clockTimer);clockTimer=0;stopCorrection();stopVisual();clearCountIn();
    try{guestConn?.close();}catch{}
    guestConn=null;guestReady=false;room='';setBadge('');
@@ -208,13 +265,13 @@ function scheduleRemoteStart(teacherAt,position){
 }
 async function hostCommand(type){
  if(type==='start'){
-  const notReady=[...hostConns.values()].filter(x=>!x.ready).length;if(notReady&&!confirm(`準備OKでない端末が${notReady}台あります。スタートしますか？`))return;
+  const approved=[...hostConns.values()].filter(x=>x.approved),notReady=approved.filter(x=>!x.ready).length;if(notReady&&!confirm(`準備OKでない端末が${notReady}台あります。スタートしますか？`))return;
   if(!teacherPrepared){await prepareHost();if(!teacherPrepared)return;}
   clearCountIn();stopCorrection();stopVisual();
   await ensureCountAudio();
   const beatSec=Math.max(.12,Math.min(4.2,Number(A()?.syncBeatSeconds?.())||.5)),beatMs=beatSec*1000,count=8,lead=500;
   const songDelay=lead+beatMs*count,at=Date.now()+songDelay,position=0;
-  for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'start',at,position});
+  for(const {conn,approved} of hostConns.values())if(approved&&conn.open)conn.send({type:'start',at,position});
   A()?.syncScheduleStart?.(songDelay,position);
   setTimeout(()=>startCorrection(at,position),songDelay+120);
   await playCountIn(lead,beatMs,count);
@@ -222,8 +279,8 @@ async function hostCommand(type){
   countTimers.push(setTimeout(()=>{$('hostStatus').textContent='▶ 演奏スタート';},songDelay));
   return;
  }
- if(type==='pause'){clearCountIn();const position=A()?.getSyncTime?.()||0;for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'pause',position});stopCorrection();if(teacherPrepared)A()?.syncPause?.();return;}
- if(type==='reset'){clearCountIn();for(const {conn} of hostConns.values())if(conn.open)conn.send({type:'reset',position:0});stopCorrection();if(teacherPrepared)A()?.syncSeek?.(0);return;}
+ if(type==='pause'){clearCountIn();const position=A()?.getSyncTime?.()||0;for(const {conn,approved} of hostConns.values())if(approved&&conn.open)conn.send({type:'pause',position});stopCorrection();if(teacherPrepared)A()?.syncPause?.();return;}
+ if(type==='reset'){clearCountIn();for(const {conn,approved} of hostConns.values())if(approved&&conn.open)conn.send({type:'reset',position:0});stopCorrection();if(teacherPrepared)A()?.syncSeek?.(0);return;}
 }
 function init(){if(!A())return setTimeout(init,40);addStyles();makeUI();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
