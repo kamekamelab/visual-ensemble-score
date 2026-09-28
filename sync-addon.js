@@ -41,11 +41,22 @@ async function ensureCountAudio(){
  countCtx ||= new C();await countCtx.resume();return countCtx;
 }
 function scheduleTan(ctx,at){
- const o=ctx.createOscillator(),g=ctx.createGain();
- o.type='triangle';o.frequency.setValueAtTime(230,at);o.frequency.exponentialRampToValueAtTime(120,at+.07);
- g.gain.setValueAtTime(.0001,at);g.gain.exponentialRampToValueAtTime(.28,at+.004);g.gain.exponentialRampToValueAtTime(.0001,at+.095);
- o.connect(g);g.connect(ctx.destination);o.start(at);o.stop(at+.1);
- o.onended=()=>{try{o.disconnect();g.disconnect();}catch{}};
+ const body=ctx.createOscillator(),click=ctx.createOscillator(),g=ctx.createGain(),cg=ctx.createGain();
+ body.type='triangle';
+ body.frequency.setValueAtTime(260,at);
+ body.frequency.exponentialRampToValueAtTime(105,at+.13);
+ click.type='square';
+ click.frequency.setValueAtTime(720,at);
+ click.frequency.exponentialRampToValueAtTime(260,at+.035);
+ g.gain.setValueAtTime(.0001,at);
+ g.gain.exponentialRampToValueAtTime(.78,at+.005);
+ g.gain.exponentialRampToValueAtTime(.0001,at+.17);
+ cg.gain.setValueAtTime(.0001,at);
+ cg.gain.exponentialRampToValueAtTime(.22,at+.003);
+ cg.gain.exponentialRampToValueAtTime(.0001,at+.045);
+ body.connect(g);click.connect(cg);g.connect(ctx.destination);cg.connect(ctx.destination);
+ body.start(at);click.start(at);body.stop(at+.18);click.stop(at+.05);
+ body.onended=()=>{try{body.disconnect();click.disconnect();g.disconnect();cg.disconnect();}catch{}};
 }
 async function playCountIn(firstTapDelayMs,beatMs,count=8){
  clearCountIn();const ctx=await ensureCountAudio(),firstAt=ctx.currentTime+firstTapDelayMs/1000;
@@ -135,7 +146,7 @@ function guestData(data){if(!data||typeof data!=='object')return;
 }
 async function unlockMedia(){const a=A();if(!a?.hasMedia?.())throw Error('教材の受信がまだ終わっていません。');await a.syncUnlock();}
 async function prepareGuest(){try{if(!A()?.getProject?.()?.parts?.length)throw Error('絵譜の受信がまだ終わっていません。');guestReady=true;guestConn?.send({type:'ready',ready:true});$('guestStatus').textContent='✓ 準備OKです。先生のスタートを待ちます。';$('guestPrepare').textContent='✓ 準備OK';A()?.enterPerformance?.();window.dispatchEvent(new Event('score-performance-ready'));$('syncModal').close();}catch(e){msg(e.message);}}
-async function prepareHost(){try{await unlockMedia();teacherPrepared=true;$('hostPrepare').textContent='✓ この端末も準備OK';A()?.enterPerformance?.();window.dispatchEvent(new Event('score-performance-ready'));}catch(e){msg(e.message);}}
+async function prepareHost(){try{await ensureCountAudio();await unlockMedia();teacherPrepared=true;$('hostPrepare').textContent='✓ この端末も準備OK';A()?.enterPerformance?.();window.dispatchEvent(new Event('score-performance-ready'));}catch(e){msg(e.message);}}
 function expectedPosition(){
  const a=A(),rate=a?.getSyncRate?.()||1,teacherNow=Date.now()+(mode==='guest'?clockOffset:0);
  return activeStartPosition+Math.max(0,teacherNow-activeStartAt)/1000*rate;
