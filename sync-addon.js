@@ -143,11 +143,20 @@ function renderDevices(){
  $('hostStatus').textContent=approved.length+'台 許可済み／'+approved.filter(x=>x.bundle).length+'台 絵譜受信／'+approved.filter(x=>x.ready).length+'台 準備OK'+(pending?'／'+pending+'台 承認待ち':'');
 }
 function showGuest(){destroyPeer();mode='guest';setPanels('guest');$('guestStatus').textContent='ルーム番号を入れてください。';$('guestPrepare').disabled=true;setBadge('');}
-async function joinRoom(){
+async function joinRoom(retry=0){
  const code=String($('roomInput').value||'').replace(/\D/g,'').slice(0,4);$('roomInput').value=code;if(code.length!==4)return msg('4けたのルーム番号を入れてください。');
  try{await loadPeer();destroyPeer();mode='guest';room=code;$('guestStatus').textContent='接続しています…';peer=new Peer();
  peer.on('open',()=>{const conn=peer.connect(peerId(code),{serialization:'binary',reliable:true});guestConn=conn;guestClosedReason='';conn.on('open',()=>{setBadge('📡 承認待ち '+code);$('guestStatus').textContent='先生の許可を待っています…';$('guestPrepare').disabled=true;});conn.on('data',guestData);conn.on('close',()=>guestDisconnected());conn.on('error',()=>guestDisconnected());});
- peer.on('error',err=>{$('guestStatus').textContent=peerErrorText(err);});
+ peer.on('error',err=>{
+   if(err?.type==='peer-unavailable'&&retry<3){
+     $('guestStatus').textContent='ルームを再確認しています… '+(retry+1)+'/3';
+     try{peer?.destroy();}catch{}
+     peer=null;guestConn=null;
+     setTimeout(()=>joinRoom(retry+1),700);
+     return;
+   }
+   $('guestStatus').textContent=peerErrorText(err);
+ });
  }catch(e){$('guestStatus').textContent=e.message;}
 }
 function guestDisconnected(){clearInterval(clockTimer);clockTimer=0;stopCorrection();$('guestStatus').textContent=guestClosedReason||'接続が切れました。もう一度参加してください。';guestClosedReason='';$('guestPrepare').disabled=true;setBadge('');guestReady=false;}
