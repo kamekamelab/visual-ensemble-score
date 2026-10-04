@@ -21,7 +21,7 @@ function addStyles(){
 .share-box{padding:14px;border:1px solid #dfd4b9;border-radius:12px;background:#fffaf0}
 .share-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .share-actions button{min-height:50px;flex:1 1 180px}
-.share-note{font-size:12px;color:#736743;line-height:1.7}
+.share-note{font-size:0.75rem;color:#736743;line-height:1.7}
 .share-ready{font-weight:800;color:#257334}
 .share-step{margin:6px 0;font-weight:750}
 `;document.head.append(s);
