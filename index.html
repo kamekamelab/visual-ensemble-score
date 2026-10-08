@@ -11,7 +11,7 @@
 <script>
 (async()=>{
  try{
-  const response=await fetch('./embedded/app.gz.b64?rev=20261004-offline-upgrade',{cache:'no-store'});
+  const response=await fetch('./embedded/app.gz.b64?rev=20261006-license-display',{cache:'no-store'});
   if(!response.ok)throw Error(`本体の取得に失敗しました (${response.status})`);
   const b64=(await response.text()).trim(),bin=atob(b64),bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
   const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));

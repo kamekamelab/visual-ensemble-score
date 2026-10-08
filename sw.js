@@ -1,5 +1,5 @@
 const CACHE_PREFIX='flowing-score-simple-';
-const CACHE='flowing-score-simple-v3.7.9';
+const CACHE='flowing-score-simple-v3.7.10';
 const ASSETS=['./','./index.html','./face-addon.js','./sync-addon.js','./share-addon.js','./manifest.webmanifest','./embedded/app.gz.b64','./fonts/BIZUDPGothic-Regular.ttf','./fonts/BIZUDPGothic-Bold.ttf','./fonts/OFL.txt'];
 // An older worker or HTTP cache may still hold the previous index and addons.
 // Refresh every release asset before activating the new offline cache.
