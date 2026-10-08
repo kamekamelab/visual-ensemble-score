@@ -74,29 +74,23 @@ function stopCorrection(){clearTimeout(correctionKickTimer);correctionKickTimer=
 function stopVisual(){cancelAnimationFrame(visualRaf);visualRaf=0;visualStartAt=0;visualStartPerf=0;visualLastFrame=0;}
 function later(fn,delay){const id=setTimeout(()=>{startTimers=startTimers.filter(x=>x!==id);fn();},delay);startTimers.push(id);return id;}
 function clearStartTimers(){for(const t of startTimers)clearTimeout(t);startTimers=[];}
-function clearCountIn(){for(const t of countTimers)clearTimeout(t);countTimers=[];for(const n of countNodes){try{n.body.stop();n.click.stop();}catch{}try{n.body.disconnect();n.click.disconnect();n.g.disconnect();n.cg.disconnect();}catch{}}countNodes.clear();}
+function clearCountIn(){for(const t of countTimers)clearTimeout(t);countTimers=[];for(const n of countNodes){try{n.body.stop();}catch{}try{n.body.disconnect();n.g.disconnect();}catch{}}countNodes.clear();}
 async function ensureCountAudio(){
  const C=window.AudioContext||window.webkitAudioContext;if(!C)throw Error('この端末ではカウント音を鳴らせません。');
  countCtx ||= new C();await countCtx.resume();return countCtx;
 }
 function scheduleTan(ctx,at){
- const body=ctx.createOscillator(),click=ctx.createOscillator(),g=ctx.createGain(),cg=ctx.createGain();
- const nodes={body,click,g,cg};countNodes.add(nodes);
+ const body=ctx.createOscillator(),g=ctx.createGain();
+ const nodes={body,g};countNodes.add(nodes);
  body.type='triangle';
- body.frequency.setValueAtTime(260,at);
- body.frequency.exponentialRampToValueAtTime(105,at+.13);
- click.type='square';
- click.frequency.setValueAtTime(720,at);
- click.frequency.exponentialRampToValueAtTime(260,at+.035);
+ body.frequency.setValueAtTime(230,at);
+ body.frequency.exponentialRampToValueAtTime(120,at+.07);
  g.gain.setValueAtTime(.0001,at);
- g.gain.exponentialRampToValueAtTime(.78,at+.005);
- g.gain.exponentialRampToValueAtTime(.0001,at+.17);
- cg.gain.setValueAtTime(.0001,at);
- cg.gain.exponentialRampToValueAtTime(.22,at+.003);
- cg.gain.exponentialRampToValueAtTime(.0001,at+.045);
- body.connect(g);click.connect(cg);g.connect(ctx.destination);cg.connect(ctx.destination);
- body.start(at);click.start(at);body.stop(at+.18);click.stop(at+.05);
- body.onended=()=>{countNodes.delete(nodes);try{body.disconnect();click.disconnect();g.disconnect();cg.disconnect();}catch{}};
+ g.gain.exponentialRampToValueAtTime(.28,at+.004);
+ g.gain.exponentialRampToValueAtTime(.0001,at+.095);
+ body.connect(g);g.connect(ctx.destination);
+ body.start(at);body.stop(at+.1);
+ body.onended=()=>{countNodes.delete(nodes);try{body.disconnect();g.disconnect();}catch{}};
 }
 async function playCountIn(firstTapDelayMs,beatMs,count=8){
  clearCountIn();if(!count)return;const ctx=await ensureCountAudio(),firstAt=ctx.currentTime+firstTapDelayMs/1000;
